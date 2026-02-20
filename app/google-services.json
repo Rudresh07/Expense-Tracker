@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "752546422516",
+    "project_id": "expense-tracker-adc99",
+    "storage_bucket": "expense-tracker-adc99.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:752546422516:android:e4deb66b84e193a398c8a1",
+        "android_client_info": {
+          "package_name": "com.rudy.expensetracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCDAX7gMn1P4mMEb8LIl-O3l05UHBVzVu4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
