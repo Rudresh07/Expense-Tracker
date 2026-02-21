@@ -3,7 +3,7 @@ name: Android CI
 on:
   push:
     branches:
-      - main
+      - expense_tracker_qa
   pull_request:
     types: [opened, reopened, synchronize]
   workflow_dispatch:
