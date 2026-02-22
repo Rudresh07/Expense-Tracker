@@ -10,6 +10,7 @@ on:
     types: [opened, reopened, synchronize]
   workflow_dispatch:
 jobs:
+  #Lint checking
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -23,7 +24,24 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lint.html
-          path: app/build/ports/lint-result.html
+          path: app/build/reports/lint-result-debug.html
+
+  #Test case running and report
+  unit-test:
+    needs: [lint]
+    runs-on:  ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Test Cases
+        run: ./gradlew test
+
+      - name: Upload Testing Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: testcase.html
+          path: app/build/reports/test-cases-result-debug.html
 
   build:
     name: Build Expense Tracker
