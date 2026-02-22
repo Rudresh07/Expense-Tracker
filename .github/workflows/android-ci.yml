@@ -14,13 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: action/checkout@v4
+        uses: actions/checkout@v4
 
       - name: Run Lint
         run: ./gradlew lintDebug
 
       - name: Upload HTML Report
-        uses: actions/checkout@v4
+        uses: actions/upload-artifact@v4
         with:
           name: lint.html
           path: app/build/ports/lint-result.html
@@ -37,7 +37,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
       - name: Grant Execute Permission To Gradle
         run: chmod +x gradlew
