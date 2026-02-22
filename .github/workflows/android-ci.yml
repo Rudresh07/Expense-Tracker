@@ -4,10 +4,26 @@ on:
   push:
     branches:
       - expense_tracker_qa
+      - main
   pull_request:
     types: [opened, reopened, synchronize]
   workflow_dispatch:
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: action/checkout@v4
+
+      - name: Run Lint
+        run: ./gradlew lintDebug
+
+      - name: Upload HTML Report
+        uses: actions/checkout@v4
+        with:
+          name: lint.html
+          path: app/build/ports/lint-result.html
+
   build:
     name: Build Expense Tracker
     runs-on: ubuntu-latest
