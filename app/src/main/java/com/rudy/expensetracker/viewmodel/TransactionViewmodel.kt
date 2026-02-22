@@ -1,6 +1,5 @@
 package com.rudy.expensetracker.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rudy.expensetracker.model.Transaction
@@ -66,7 +65,6 @@ class TransactionViewmodel(private val repository: TransactionRepository): ViewM
     fun getFilteredTransaction(month: String, year: String) {
         viewModelScope.launch {
             repository.getFilteredTransaction(month, year).collect { transactions ->
-                Log.d("TransactionViewmodel", "getFilteredTransaction ${transactions.size}")
                 _filteredTransactionList.value = transactions
             }
         }
