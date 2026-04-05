@@ -26,7 +26,7 @@ val appDiModule = module {
     factory { get<AppDatabase>().expenseDao() }
     factory {get<AppDatabase>().categoryDao() }
     single { FirebaseAnalytics() }
-    factory { TransactionRepository(get()) }
+    factory { TransactionRepository(get(),androidContext()) }
     factory { CategoryRepository(get()) }
     single{ PreferenceManager(androidContext()) }
     single { AuthManager(get(),get(),get()) }

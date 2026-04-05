@@ -16,7 +16,8 @@ import com.rudy.expensetracker.ui.screens.SplashScreen
 
 @Composable
 fun ExpenseNavGraph(
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    deepLinkRoute: String? = null
 ) {
     NavHost(
         navController = navController,
@@ -32,6 +33,9 @@ fun ExpenseNavGraph(
                 onNavigateToHome = {
                     navController.navigate("dashboard") {
                         popUpTo("splash") { inclusive = true }
+                    }
+                    if (deepLinkRoute != null) {
+                        navController.navigate(deepLinkRoute)
                     }
                 }
             )

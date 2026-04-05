@@ -1,11 +1,15 @@
 package com.rudy.expensetracker.repository
 
+import android.content.Context
 import com.rudy.expensetracker.database.ExpenseDao
 import com.rudy.expensetracker.model.Transaction
 import com.rudy.expensetracker.model.TransactionWithCategory
+import com.rudy.expensetracker.widget.AppWidget
 import kotlinx.coroutines.flow.Flow // Ensure this import is present
 
-class TransactionRepository(private val dao: ExpenseDao) { // Made dao private val
+class TransactionRepository(private val dao: ExpenseDao,
+                            private val context: Context
+) { // Made dao private val
 
     // Expose Flow directly from the DAO
     val allTransactions: Flow<List<TransactionWithCategory>> = dao.getAllExpenses()
@@ -24,14 +28,17 @@ class TransactionRepository(private val dao: ExpenseDao) { // Made dao private v
 
     suspend fun addTransaction(transaction: Transaction) {
         dao.insertExpense(transaction)
+        AppWidget().updateAll(context)
     }
 
     suspend fun updateTransaction(transaction: Transaction) {
         dao.updateExpense(transaction)
+        AppWidget().updateAll(context)
     }
 
     suspend fun deleteTransaction(transaction: Transaction) {
         dao.deleteExpense(transaction)
+        AppWidget().updateAll(context)
     }
 
     suspend fun getFilteredTransaction(month: String, year: String): Flow<List<TransactionWithCategory>> {

@@ -1,13 +1,16 @@
 package com.rudy.expensetracker.repository
 
+import android.content.Context
 import com.rudy.expensetracker.database.ExpenseDao
 import com.rudy.expensetracker.model.CategoryEntity
 import com.rudy.expensetracker.model.Transaction
 import com.rudy.expensetracker.model.TransactionWithCategory
+import com.rudy.expensetracker.widget.AppWidget
 import io.mockk.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -15,16 +18,27 @@ import org.junit.Test
 class TransactionRepositoryTest {
 
     private lateinit var dao: ExpenseDao
+    private lateinit var context: Context
     private lateinit var repository: TransactionRepository
 
     @Before
     fun setUp() {
         dao = mockk()
+        context = mockk()
         every { dao.getAllExpenses() } returns flowOf(emptyList())
         every { dao.getTotalBalance() } returns flowOf(0.0)
         every { dao.getTotalIncome() } returns flowOf(0.0)
         every { dao.getTotalExpense() } returns flowOf(0.0)
-        repository = TransactionRepository(dao)
+        // AppWidget.updateAll() calls Glance framework internals — mock the constructor
+        // so unit tests don't touch Android framework code
+        mockkConstructor(AppWidget::class)
+        coEvery { anyConstructed<AppWidget>().updateAll(any()) } just Runs
+        repository = TransactionRepository(dao, context)
+    }
+
+    @After
+    fun tearDown() {
+        unmockkConstructor(AppWidget::class)
     }
 
     @Test
@@ -98,7 +112,7 @@ class TransactionRepositoryTest {
         val expectedFlow = flowOf(transactions)
         every { dao.getAllExpenses() } returns expectedFlow
 
-        val repo = TransactionRepository(dao)
+        val repo = TransactionRepository(dao, context)
 
         assertEquals(expectedFlow, repo.allTransactions)
     }

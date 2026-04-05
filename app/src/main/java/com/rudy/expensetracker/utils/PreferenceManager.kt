@@ -34,4 +34,7 @@ class PreferenceManager(context: Context) {
     fun clearUserData() {
         mPrefs.edit { clear() }
     }
+
+    fun setMonthlyBudget(amount: Double) { mPrefs.edit { putFloat("monthly_budget", amount.toFloat()) } }
+    fun getMonthlyBudget(): Double = mPrefs.getFloat("monthly_budget", 0f).toDouble()
 }

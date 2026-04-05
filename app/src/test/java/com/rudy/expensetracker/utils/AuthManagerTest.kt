@@ -3,6 +3,7 @@ package com.rudy.expensetracker.utils
 import com.rudy.expensetracker.database.CategoryDao
 import com.rudy.expensetracker.database.ExpenseDao
 import io.mockk.*
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
