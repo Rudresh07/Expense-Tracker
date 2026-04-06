@@ -37,4 +37,8 @@ class PreferenceManager(context: Context) {
 
     fun setMonthlyBudget(amount: Double) { mPrefs.edit { putFloat("monthly_budget", amount.toFloat()) } }
     fun getMonthlyBudget(): Double = mPrefs.getFloat("monthly_budget", 0f).toDouble()
+
+    fun setInitialSmsScanDone() { mPrefs.edit { putBoolean("initial_sms_scan_done", true) } }
+    fun isInitialSmsScanDone(): Boolean = mPrefs.getBoolean("initial_sms_scan_done", false)
+
 }
