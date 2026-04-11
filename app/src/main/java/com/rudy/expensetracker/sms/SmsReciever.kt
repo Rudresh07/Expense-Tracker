@@ -22,24 +22,19 @@ class SmsReceiver : BroadcastReceiver(), KoinComponent {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override fun onReceive(context: Context, intent: Intent) {
+        Log.d(TAG, "onReceive() called — action=${intent.action}")
+
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
 
-        val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
-            ?: return
+        val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return
 
         val grouped = messages
             .filterNotNull()
             .groupBy { it.originatingAddress.orEmpty() }
 
-        // goAsync() called ONCE here, outside the loop
         val pendingResult = goAsync()
         scope.launch {
             try {
-                val otherCategory = categoryRepository.getCategoryByName("Other")
-                val categoryId = otherCategory?.id
-                    ?: categoryRepository.getAllCategories().firstOrNull()?.id
-                    ?: 1
-
                 grouped.forEach { (sender, parts) ->
                     val body = parts.joinToString(separator = "") { it.messageBody.orEmpty() }
 
@@ -49,6 +44,16 @@ class SmsReceiver : BroadcastReceiver(), KoinComponent {
                         Log.d(TAG, "Skipped SMS from $sender — OTP, promo, or non-bank")
                         return@forEach
                     }
+
+                    // Resolve category based on merchant + body keywords
+                    val merchant = SmsParser.parseMerchant(body)
+                    val categoryName = SmsCategorizer.categorize(merchant, body)
+                    val categoryId = categoryRepository.getCategoryByName(categoryName)?.id
+                        ?: categoryRepository.getCategoryByName("Other")?.id
+                        ?: categoryRepository.getAllCategories().firstOrNull()?.id
+                        ?: 1
+
+                    Log.d(TAG, "Auto-category: $categoryName (id=$categoryId) for merchant=$merchant")
 
                     val transaction = SmsParser.parse(body, categoryId)
                     if (transaction == null) {
