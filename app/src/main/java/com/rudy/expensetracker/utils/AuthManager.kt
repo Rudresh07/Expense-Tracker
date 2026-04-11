@@ -15,7 +15,7 @@ class AuthManager(private val prefs: PreferenceManager,
         prefs.setUserEmail(email)
         prefs.setUserName(name)
     }
-
+//test
     fun logout() {
         prefs.setUserLoginStatus(false)
         prefs.clearUserData()
