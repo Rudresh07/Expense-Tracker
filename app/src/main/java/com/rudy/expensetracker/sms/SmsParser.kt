@@ -17,7 +17,9 @@ object SmsParser {
         Regex("""[Rr]s\.?\s*([0-9]{1,7}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)"""),
         // BOB mandate: bare amount with no currency prefix e.g. "debited with 299.00"
         Regex("""(?:debited\s+with|with)\s+([0-9]{1,7}(?:\.[0-9]{1,2})?)""", RegexOption.IGNORE_CASE),
-    )
+        Regex("""amount\s+of\s+([0-9]{1,7}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)""", RegexOption.IGNORE_CASE),
+
+        )
 
     // ── Transaction type patterns ──────────────────────────────────────────────
     private val DEBIT_PATTERNS = listOf(
@@ -33,6 +35,8 @@ object SmsParser {
         Regex("""\bcharged\b""",          RegexOption.IGNORE_CASE),
         Regex("""\bpos\s+txn\b""",        RegexOption.IGNORE_CASE),
         Regex("""\btxn\s+at\b""",         RegexOption.IGNORE_CASE),
+        Regex("""\btop[\s-]?up\b""",      RegexOption.IGNORE_CASE),   // UPI LITE top-up
+        Regex("""\bsuccessful\b""",        RegexOption.IGNORE_CASE),   // "has been successful"
     )
 
     private val CREDIT_PATTERNS = listOf(
