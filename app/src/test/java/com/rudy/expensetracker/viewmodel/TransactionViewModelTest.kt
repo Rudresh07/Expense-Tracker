@@ -4,6 +4,7 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.rudy.expensetracker.model.CategoryEntity
 import com.rudy.expensetracker.model.Transaction
 import com.rudy.expensetracker.model.TransactionWithCategory
+import com.rudy.expensetracker.repository.MerchantLearningRepository
 import com.rudy.expensetracker.repository.TransactionRepository
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +26,7 @@ class TransactionViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
 
     private lateinit var repository: TransactionRepository
+    private lateinit var repository1 :MerchantLearningRepository
     private lateinit var viewModel: TransactionViewmodel
 
     private val fakeCategory = CategoryEntity(id = 1, name = "Food", iconName = "restaurant", colorValue = 0L)
@@ -38,12 +40,15 @@ class TransactionViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         repository = mockk()
+        repository1 = mockk()
         every { repository.allTransactions } returns flowOf(emptyList())
         every { repository.totalBalance } returns flowOf(0.0)
         every { repository.totalIncome } returns flowOf(0.0)
         every { repository.totalExpense } returns flowOf(0.0)
+        every { repository.pendingReviewCount } returns flowOf(0)
+        every { repository.pendingReviewTransactions } returns flowOf(emptyList())
         every { repository.getTodayExpense(any()) } returns flowOf(0.0)
-        viewModel = TransactionViewmodel(repository)
+        viewModel = TransactionViewmodel(repository,repository1)
     }
 
     @After
@@ -151,7 +156,7 @@ class TransactionViewModelTest {
     fun `loadTodayExpense updates todayExpense state`() = runTest(testDispatcher) {
         every { repository.getTodayExpense(any()) } returns flowOf(350.0)
 
-        viewModel = TransactionViewmodel(repository)
+        viewModel = TransactionViewmodel(repository,repository1)
         advanceUntilIdle()
 
         assertEquals(350.0, viewModel.todayExpense.value, 0.0)

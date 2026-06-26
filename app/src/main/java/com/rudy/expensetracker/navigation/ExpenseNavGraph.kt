@@ -7,18 +7,22 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.rudy.expensetracker.notifications.NotificationHelper
 import com.rudy.expensetracker.ui.screens.AddExpenseScreen
 import com.rudy.expensetracker.ui.screens.AllTransactionsScreen
 import com.rudy.expensetracker.ui.screens.AuthScreen
 import com.rudy.expensetracker.ui.screens.DashboardScreen
 import com.rudy.expensetracker.ui.screens.ExpenseStatisticsScreen
+import com.rudy.expensetracker.ui.screens.PendingReviewScreen
 import com.rudy.expensetracker.ui.screens.SplashScreen
+import org.koin.compose.getKoin
 
 @Composable
 fun ExpenseNavGraph(
     navController: NavHostController = rememberNavController(),
-    deepLinkRoute: String? = null
+    deepLinkRoute: String? = null,
 ) {
+    val notificationHelper: NotificationHelper = getKoin().get()
     NavHost(
         navController = navController,
         startDestination = "splash"
@@ -58,9 +62,8 @@ fun ExpenseNavGraph(
                         popUpTo("dashboard") { inclusive = true }
                     }
                 },
-                onViewAllTransactions = {
-                    navController.navigate("all_transactions")
-                }
+                onViewAllTransactions = { navController.navigate("all_transactions") },
+                onReviewClick = { navController.navigate("pending_review") },
             )
         }
         composable("add_expense") {
@@ -89,10 +92,17 @@ fun ExpenseNavGraph(
             )
         }
 
-        composable ("all_transactions"){
+        composable("all_transactions") {
             AllTransactionsScreen(
-                onBackClick = {navController.popBackStack()},
+                onBackClick = { navController.popBackStack() },
                 onEditTransaction = { transactionId -> navController.navigate("add_expense/$transactionId") },
+            )
+        }
+
+        composable("pending_review") {
+            PendingReviewScreen(
+                onBackClick = { navController.popBackStack() },
+                notificationHelper = notificationHelper,
             )
         }
     }

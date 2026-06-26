@@ -101,6 +101,7 @@ object BankSmsPatterns {
         "DBSBNK",                        // DBS Bank India
         "SCBANK",                        // Standard Chartered
         "HSBCIN",                        // HSBC India
+        "SLCBNK",
 
         // ── Public sector banks ────────────────────────────────────────────────
         "SBIINB", "SBICRD",             // SBI, SBI Credit Card
@@ -131,6 +132,22 @@ object BankSmsPatterns {
         "IPPBSM",                        // India Post Payments Bank
         "FINOBN",                        // Fino Payments Bank
         "JIOPAY",                        // Jio Payments Bank
+
+        // ── SBI UPI / payment gateway variants ────────────────────────────────
+        "SBIPSG",                        // SBI Payment Service Gateway (UPI debit)
+        "SBIUPI",                        // SBI UPI notifications
+        "SBIRES",                        // SBI Residential / branch alerts
+        "SBIBSV",                        // SBI Business/NEFT variant
+
+        // ── Fintech / BNPL / neo-banks ─────────────────────────────────────────
+        "SLICEC", "SLCPAY", "SLICIN",   // Slice credit card / pay
+        "CREDPG", "CREDPAY",             // CRED payments
+        "ONECRD",                        // OneCard (FPL)
+        "FAMPAY",                        // FamPay
+        "JUPBNK",                        // Jupiter Bank (Federal Bank partner)
+        "NIYOBN",                        // Niyo Bank
+        "ZEROBN",                        // Zero1 by RBL
+        "FINTEC",                        // generic fintech fallback
     )
 
     fun isBankSender(sender: String): Boolean {
@@ -163,6 +180,38 @@ object BankSmsPatterns {
         Regex("""\btransaction\s+password\b""",        RegexOption.IGNORE_CASE), // "transaction password"
         Regex("""\blogin\s+(otp|code|pin)\b""",        RegexOption.IGNORE_CASE), // "login otp"
         Regex("""\b\d{4,8}\s+is\s+your\b""",          RegexOption.IGNORE_CASE), // "483920 is your OTP"
+    )
+
+    // ── Content-based transaction detection (3-layer check) ──────────────────
+
+    // Layer 1: Currency amount signal
+    val CONTENT_AMOUNT_SIGNAL = Regex(
+        """(?:Rs\.?|INR|₹)\s*[0-9]{1,7}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?""",
+        RegexOption.IGNORE_CASE
+    )
+
+    // Layer 2: Clear debit / credit direction keywords
+    val CONTENT_TXN_DIRECTION = listOf(
+        Regex("""\bdebited\b""",      RegexOption.IGNORE_CASE),
+        Regex("""\bcredited\b""",     RegexOption.IGNORE_CASE),
+        Regex("""\bspent\b""",        RegexOption.IGNORE_CASE),
+        Regex("""\bwithdrawn\b""",    RegexOption.IGNORE_CASE),
+        Regex("""\bwithdrawal\b""",   RegexOption.IGNORE_CASE), // ATM "withdrawal of Rs.2,000"
+        Regex("""\bdeducted\b""",     RegexOption.IGNORE_CASE),
+        Regex("""\bcharged\b""",      RegexOption.IGNORE_CASE),
+        Regex("""\bused\s+at\b""",    RegexOption.IGNORE_CASE), // CC swipe "card used at AMAZON"
+        Regex("""\bsent\s+from\b""",  RegexOption.IGNORE_CASE), // Slice / neo-bank "sent from a/c"
+        Regex("""\bDr\.?(\s|$)"""),                             // BOB/BOI "Dr." or "Dr "
+        Regex("""\bCr\.?(\s|$)"""),                             // BOB credit "Cr." or "Cr "
+    )
+
+    // Layer 3: Bank-specific authenticators — at least one must be present.
+    // Fintech / loan / e-commerce SMS almost never carry all of these.
+    val CONTENT_BANK_AUTHENTICATORS = listOf(
+        Regex("""[Xx*]{2,}\s*\d{4}"""),                                              // masked a/c: XX1234, **1234
+        Regex("""\bavl\b|\bavbl\b|\bavail""",            RegexOption.IGNORE_CASE),   // avl bal / available balance
+        Regex("""\b(?:UPI|NEFT|IMPS|RTGS|NACH)\b"""),                               // banking payment rails
+        Regex("""\ba/c\b|\bacct\b|\baccount\s*no\.?\b""", RegexOption.IGNORE_CASE), // account reference terms
     )
 
     // ── Promotional / non-transaction signals ─────────────────────────────────

@@ -1,6 +1,9 @@
 package com.rudy.expensetracker.ui.screens
 
 import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -25,6 +28,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -44,6 +48,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -84,6 +90,7 @@ fun AllTransactionsScreen(
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
     val isDarkTheme = isSystemInDarkTheme()
+    val context = LocalContext.current
 
     val viewModel: TransactionViewmodel = koinViewModel()
     val allTransactions by viewModel.transactionList.collectAsState()
@@ -98,7 +105,7 @@ fun AllTransactionsScreen(
     Log.d("AllTransactionsScreen", "All Transactions: $allTransactions")
 
     // Filter options
-    val timeFilterOptions = listOf("All", "Today", "7 days", "30 days", "90 days", "This Year")
+    val timeFilterOptions = listOf("All", "Today", "This Month", "7 days", "30 days", "90 days", "This Year")
     val typeFilterOptions = listOf("All", "Income", "Expense")
     val categoryFilterOptions = listOf("All") + allTransactions.map { it.category.name }.distinct()
 
@@ -110,6 +117,7 @@ fun AllTransactionsScreen(
         if (selectedTimeFilter != "All") {
             val cutoffDate: LocalDate = when (selectedTimeFilter) {
                 "Today" -> LocalDate.now()
+                "This Month" -> LocalDate.now().withDayOfMonth(1)
                 "7 days" -> LocalDate.now().minusDays(7)
                 "30 days" -> LocalDate.now().minusDays(30)
                 "90 days" -> LocalDate.now().minusDays(90)
@@ -148,6 +156,41 @@ fun AllTransactionsScreen(
             } catch (e: Exception) {
                 LocalDate.MIN
             }
+        }
+    }
+
+    val totalFilteredExpense = remember(filteredTransactions) {
+        filteredTransactions.filter { it.transaction.amount < 0 }.sumOf { abs(it.transaction.amount) }
+    }
+    val totalFilteredIncome = remember(filteredTransactions) {
+        filteredTransactions.filter { it.transaction.amount > 0 }.sumOf { it.transaction.amount }
+    }
+
+    // CSV export launcher — opens system file picker for save location
+    val currentTransactions by rememberUpdatedState(filteredTransactions)
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        try {
+            context.contentResolver.openOutputStream(uri)?.use { stream ->
+                stream.writer().use { w ->
+                    w.append("Date,Title,Category,Amount,Type,Note\n")
+                    currentTransactions.forEach { txn ->
+                        val note = (txn.transaction.note ?: "").replace("\"", "\"\"").replace("\n", " ")
+                        val title = txn.transaction.title.replace("\"", "\"\"")
+                        w.append("${txn.transaction.date},")
+                        w.append("\"$title\",")
+                        w.append("\"${txn.category.name}\",")
+                        w.append("${String.format("%.2f", abs(txn.transaction.amount))},")
+                        w.append("${if (txn.transaction.amount < 0) "Expense" else "Income"},")
+                        w.append("\"$note\"\n")
+                    }
+                }
+            }
+            Toast.makeText(context, "Exported ${currentTransactions.size} transactions", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -221,8 +264,19 @@ fun AllTransactionsScreen(
                         text = "Filters",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = textColor
+                        color = textColor,
+                        modifier = Modifier.weight(1f)
                     )
+                    IconButton(onClick = {
+                        exportLauncher.launch("transactions_export.csv")
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Export CSV",
+                            tint = Orange,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
 
                 // Filters
@@ -407,11 +461,27 @@ fun AllTransactionsScreen(
 
                 // Results Info
                 Text(
-                    text = "${filteredTransactions.size} transactions found",
+                    text = "${filteredTransactions.size} transaction${if (filteredTransactions.size != 1) "s" else ""}",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = textColor
                 )
+
+                if (filteredTransactions.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "↑ ₹${String.format("%.2f", totalFilteredIncome)}",
+                        fontSize = 12.sp,
+                        color = Color(0xFF34C759),
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = "↓ ₹${String.format("%.2f", totalFilteredExpense)}",
+                        fontSize = 12.sp,
+                        color = Color(0xFFFF3B30),
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
 
                 if (selectedTimeFilter != "All" || selectedTypeFilter != "All" || selectedCategoryFilter != "All") {
                     Spacer(modifier = Modifier.height(12.dp))
@@ -452,7 +522,7 @@ fun AllTransactionsScreen(
                         .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(filteredTransactions) { it ->
+                    /*items(filteredTransactions) { it ->
                         Column {
                             Text(text = it.transaction.title,
                                 fontSize = 18.sp,
@@ -471,6 +541,18 @@ fun AllTransactionsScreen(
                                 onEditClick = { onEditTransaction(it) }
                             )
                         }
+                    }*/
+
+                    items(filteredTransactions) { it ->
+                        AllTransactionItem(
+                            transaction = it,
+                            isLandscape = true,
+                            surfaceColor = surfaceColor,
+                            textColor = textColor,
+                            textSecondaryColor = textSecondaryColor,
+                            onDeleteClick = { transactionToDelete = it },
+                            onEditClick = { onEditTransaction(it) }
+                        )
                     }
 
                     if (filteredTransactions.isEmpty()) {
@@ -529,6 +611,17 @@ fun AllTransactionsScreen(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
                             tint = textColor
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        exportLauncher.launch("transactions_export.csv")
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Export CSV",
+                            tint = Orange,
                         )
                     }
                 },
@@ -721,34 +814,57 @@ fun AllTransactionsScreen(
                 }
             }
 
-            // Results count and clear filters
-            Row(
+            // Results count, totals and clear filters
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(backgroundColor)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
-                Text(
-                    text = "${filteredTransactions.size} transactions found",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = textColor
-                )
-
-                if (selectedTimeFilter != "All" || selectedTypeFilter != "All" || selectedCategoryFilter != "All") {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        text = "Clear All Filters",
-                        fontSize = 13.sp,
-                        color = Orange,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.clickable {
-                            selectedTimeFilter = "All"
-                            selectedTypeFilter = "All"
-                            selectedCategoryFilter = "All"
-                        }
+                        text = "${filteredTransactions.size} transaction${if (filteredTransactions.size != 1) "s" else ""}",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = textColor
                     )
+                    if (selectedTimeFilter != "All" || selectedTypeFilter != "All" || selectedCategoryFilter != "All") {
+                        Text(
+                            text = "Clear Filters",
+                            fontSize = 13.sp,
+                            color = Orange,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.clickable {
+                                selectedTimeFilter = "All"
+                                selectedTypeFilter = "All"
+                                selectedCategoryFilter = "All"
+                            }
+                        )
+                    }
+                }
+                if (filteredTransactions.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            text = "Income: ₹${String.format("%.2f", totalFilteredIncome)}",
+                            fontSize = 13.sp,
+                            color = Color(0xFF34C759),
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = "Expense: ₹${String.format("%.2f", totalFilteredExpense)}",
+                            fontSize = 13.sp,
+                            color = Color(0xFFFF3B30),
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
                 }
             }
 
@@ -809,7 +925,7 @@ fun AllTransactionsScreen(
     }
 }
 
-@Composable
+/*@Composable
 fun AllTransactionItem(
     transaction: TransactionWithCategory,
     isLandscape: Boolean = false,
@@ -971,6 +1087,148 @@ fun AllTransactionItem(
                                 modifier = Modifier.size(19.dp)
                             )
                         }
+                    }
+                }
+            }
+        }
+    }
+}*/
+
+@Composable
+fun AllTransactionItem(
+    transaction: TransactionWithCategory,
+    isLandscape: Boolean = false,
+    surfaceColor: Color,
+    textColor: Color,
+    textSecondaryColor: Color,
+    onDeleteClick: (Transaction) -> Unit,
+    onEditClick: (Int) -> Unit
+) {
+    val displayDate = try {
+        LocalDate.parse(transaction.transaction.date, DateTimeFormatter.ofPattern("dd MM yyyy"))
+            .format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))
+    } catch (e: Exception) {
+        transaction.transaction.date
+    }
+
+    val isExpense = transaction.transaction.amount < 0
+    val amountColor = if (isExpense) Color(0xFFFF3B30) else Color(0xFF34C759)
+    val amountText = "₹${String.format("%.2f", abs(transaction.transaction.amount))}"
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = surfaceColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isLandscape) 2.dp else 4.dp),
+        shape = RoundedCornerShape(if (isLandscape) 12.dp else 16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(if (isLandscape) 10.dp else 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Category icon
+            Box(
+                modifier = Modifier
+                    .size(if (isLandscape) 38.dp else 48.dp)
+                    .clip(CircleShape)
+                    .background(transaction.category.colorValue.toColor()),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = IconManager.getIconByName(transaction.category.iconName),
+                    contentDescription = transaction.category.name,
+                    tint = Color.White,
+                    modifier = Modifier.size(if (isLandscape) 19.dp else 24.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(if (isLandscape) 8.dp else 12.dp))
+
+            // Left info — takes all remaining space, truncates long text
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = transaction.category.name,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = if (isLandscape) 13.sp else 15.sp,
+                    color = textColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                // Merchant / payee — UPI IDs truncated here instead of overflowing
+                val title = transaction.transaction.title
+                if (!title.isNullOrBlank() && title != "Bank Transaction") {
+                    Text(
+                        text = title,
+                        color = textSecondaryColor,
+                        fontSize = if (isLandscape) 10.sp else 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 1.dp)
+                    )
+                }
+                Text(
+                    text = displayDate,
+                    color = textSecondaryColor,
+                    fontSize = if (isLandscape) 10.sp else 11.sp,
+                    modifier = Modifier.padding(top = 1.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Amount — fixed width so it never grows into left content
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = amountText,
+                    color = amountColor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (isLandscape) 13.sp else 15.sp,
+                    maxLines = 1
+                )
+                Text(
+                    text = if (isExpense) "Expense" else "Income",
+                    color = amountColor,
+                    fontSize = if (isLandscape) 9.sp else 11.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Spacer(modifier = Modifier.width(if (isLandscape) 4.dp else 6.dp))
+
+            // Action buttons
+            if (isLandscape) {
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    IconButton(
+                        onClick = { onEditClick(transaction.transaction.id) },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit",
+                            tint = Orange, modifier = Modifier.size(16.dp))
+                    }
+                    IconButton(
+                        onClick = { onDeleteClick(transaction.transaction) },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete",
+                            tint = Color(0xFFFF3B30), modifier = Modifier.size(16.dp))
+                    }
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    IconButton(
+                        onClick = { onEditClick(transaction.transaction.id) },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit",
+                            tint = Orange, modifier = Modifier.size(18.dp))
+                    }
+                    IconButton(
+                        onClick = { onDeleteClick(transaction.transaction) },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete",
+                            tint = Color(0xFFFF3B30), modifier = Modifier.size(18.dp))
                     }
                 }
             }

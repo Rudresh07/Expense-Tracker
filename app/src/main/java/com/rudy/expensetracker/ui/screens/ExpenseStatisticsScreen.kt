@@ -860,7 +860,7 @@ fun ExpenseStatItem(
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "₹${statistic.amount}",
+                    text = "₹${statistic.amount.toInt()}",
                     fontWeight = FontWeight.Bold,
                     fontSize = dimensionResource(com.intuit.ssp.R.dimen._16ssp).value.sp,
                     color = Orange

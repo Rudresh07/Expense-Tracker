@@ -29,6 +29,8 @@ class TransactionRepositoryTest {
         every { dao.getTotalBalance() } returns flowOf(0.0)
         every { dao.getTotalIncome() } returns flowOf(0.0)
         every { dao.getTotalExpense() } returns flowOf(0.0)
+        every { dao.getPendingReviewCount() } returns flowOf(0)
+        every { dao.getPendingReviewTransactions() } returns flowOf(emptyList())
         // AppWidget.updateAll() calls Glance framework internals — mock the constructor
         // so unit tests don't touch Android framework code
         mockkConstructor(AppWidget::class)

@@ -76,7 +76,6 @@ const val ROUTE_ADD_EXPENSE = "add_expense"
 data class WidgetState(
     val totalBalance: Double = 0.0,
     val totalIncome: Double = 0.0,
-    val todayExpense: Double = 0.0,
     val monthlyExpense: Double = 0.0,
     val monthlyBudget: Double = 0.0,
     val expenseTransactions: List<TransactionWithCategory> = emptyList(),
@@ -96,9 +95,6 @@ class AppWidget : GlanceAppWidget() {
         val repository = GlobalContext.get().get<TransactionRepository>()
         val prefs = GlobalContext.get().get<PreferenceManager>()
 
-        // Computed once — stable for the lifetime of this composition.
-        // The widget refresh period (updatePeriodMillis) handles day rollover.
-        val today = LocalDate.now().format(DateTimeFormatter.ofPattern("dd MM yyyy"))
         val dateFormatter = DateTimeFormatter.ofPattern("dd MM yyyy")
 
         provideContent {
@@ -108,8 +104,6 @@ class AppWidget : GlanceAppWidget() {
             val allTransactions by repository.allTransactions.collectAsState(initial = emptyList())
             val totalBalance by repository.totalBalance.collectAsState(initial = 0.0)
             val totalIncome by repository.totalIncome.collectAsState(initial = 0.0)
-            val todayExpense by remember { repository.getTodayExpense(today) }
-                .collectAsState(initial = 0.0)
 
             // Expense-only rows, most recent first
             val expenseTransactions = remember(allTransactions) {
@@ -131,7 +125,6 @@ class AppWidget : GlanceAppWidget() {
                 WidgetState(
                     totalBalance = totalBalance,
                     totalIncome = totalIncome,
-                    todayExpense = todayExpense,
                     monthlyExpense = monthlyExpense,
                     // SharedPreferences isn't a Flow; updateAll() from the repository
                     // ensures the widget picks up budget changes from the app.
@@ -173,7 +166,7 @@ fun WidgetContent(state: WidgetState = WidgetState()) {
             Spacer(modifier = GlanceModifier.height(10.dp))
             BalanceSection(state.totalBalance)
             Spacer(modifier = GlanceModifier.height(8.dp))
-            StatPills(state.totalIncome, state.todayExpense)
+            StatPills(state.totalIncome, state.monthlyExpense)
 
             if (isExpanded) {
                 // Show budget bar only when a budget has been set
@@ -259,7 +252,7 @@ private fun BalanceSection(totalBalance: Double) {
 }
 
 @Composable
-private fun StatPills(totalIncome: Double, todayExpense: Double) {
+private fun StatPills(totalIncome: Double, monthlyExpense: Double) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = GlanceModifier
@@ -282,7 +275,7 @@ private fun StatPills(totalIncome: Double, todayExpense: Double) {
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = "↘ Today ${"%.0f".format(todayExpense)}",
+                text = "↘ Month ${"%.0f".format(monthlyExpense)}",
                 style = TextStyle(color = color(RedText), fontSize = 11.sp, fontWeight = FontWeight.Medium),
             )
         }

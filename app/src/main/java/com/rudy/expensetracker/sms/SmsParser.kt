@@ -25,22 +25,26 @@ object SmsParser {
     private val DEBIT_PATTERNS = listOf(
         Regex("""\bdebited\b""",          RegexOption.IGNORE_CASE),
         Regex("""\bdebited\s+with\b""",   RegexOption.IGNORE_CASE),
-        Regex("""\bDr\.(\s|$)"""),                                      // BOB "Dr. from A/C"
+        Regex("""\bDr\.?(\s|$)"""),                                     // BOB/BOI "Dr." or "Dr " from A/C
         Regex("""\bdeducted\b""",         RegexOption.IGNORE_CASE),
         Regex("""\bspent\s+on\b""",       RegexOption.IGNORE_CASE),
         Regex("""\bpaid\b""",             RegexOption.IGNORE_CASE),
         Regex("""\bpayment\s+of\b""",     RegexOption.IGNORE_CASE),
         Regex("""\bpurchase\s+at\b""",    RegexOption.IGNORE_CASE),
         Regex("""\bwithdrawn\b""",        RegexOption.IGNORE_CASE),
+        Regex("""\bwithdrawal\b""",       RegexOption.IGNORE_CASE),     // ATM "withdrawal of Rs.2,000"
         Regex("""\bcharged\b""",          RegexOption.IGNORE_CASE),
         Regex("""\bpos\s+txn\b""",        RegexOption.IGNORE_CASE),
         Regex("""\btxn\s+at\b""",         RegexOption.IGNORE_CASE),
-        Regex("""\btop[\s-]?up\b""",      RegexOption.IGNORE_CASE),   // UPI LITE top-up
-        Regex("""\bsuccessful\b""",        RegexOption.IGNORE_CASE),   // "has been successful"
+        Regex("""\bused\s+at\b""",        RegexOption.IGNORE_CASE),     // CC swipe "card used at AMAZON"
+        Regex("""\btop[\s-]?up\b""",      RegexOption.IGNORE_CASE),     // UPI LITE top-up
+        Regex("""\bsuccessful\b""",       RegexOption.IGNORE_CASE),     // "transaction has been successful"
+        Regex("""\bsent\s+from\b""",      RegexOption.IGNORE_CASE),     // Slice / neo-bank "sent from a/c"
     )
 
     private val CREDIT_PATTERNS = listOf(
         Regex("""\bcredited\b""",         RegexOption.IGNORE_CASE),
+        Regex("""\bCr\.?(\s|$)"""),                                     // BOB credit notation "Cr." or "Cr "
         Regex("""\breceived\b""",         RegexOption.IGNORE_CASE),
         Regex("""\bdeposited\b""",        RegexOption.IGNORE_CASE),
         Regex("""\brefund(ed)?\b""",      RegexOption.IGNORE_CASE),
@@ -178,11 +182,16 @@ object SmsParser {
     }
 
     private fun sanitizeMerchant(raw: String): String {
-        val isUpiHandle = raw.contains('@')   // e.g. paytm.s1s58yz@pty, xyz@upi
+        val isUpiHandle = raw.contains('@')
+
+        // Translate known wallet VPAs to human-readable names
+        if (isUpiHandle) {
+            WalletVpaDetector.humanName(raw.trim())?.let { return it }
+        }
+
         return raw
             .replace(Regex("""\s+on\s+\d.*$""",              RegexOption.IGNORE_CASE), "")
             .replace(Regex("""\s+(UPI|NEFT|IMPS|POS)\s*$""", RegexOption.IGNORE_CASE), "")
-            // Skip dot-strip for UPI handles — dots are part of the address
             .let { if (isUpiHandle) it else it.replace(Regex("""\..*$"""), "") }
             .replace(Regex("""\s+Avl\b.*$""",                RegexOption.IGNORE_CASE), "")
             .replace(Regex("""\s+Available\b.*$""",          RegexOption.IGNORE_CASE), "")

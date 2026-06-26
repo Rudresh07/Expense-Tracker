@@ -1,10 +1,14 @@
 package com.rudy.expensetracker.sms
 
+import android.util.Log
+
 /**
  * Maps SMS content (merchant name + body) to one of the app's default category names:
  * Food, Transport, Shopping, Bills, Entertainment, Health, Education, Other
  */
 object SmsCategorizer {
+
+    private const val TAG = "SmsCategorizer"
 
     private val CATEGORY_KEYWORDS: Map<String, List<String>> = mapOf(
 
@@ -73,12 +77,17 @@ object SmsCategorizer {
      */
     fun categorize(merchant: String?, body: String): String {
         val searchText = "${merchant.orEmpty()} $body".lowercase()
+        Log.d(TAG, "categorize() — merchant='$merchant', searchText='${searchText.take(100)}'")
 
         for ((category, keywords) in CATEGORY_KEYWORDS) {
-            if (keywords.any { keyword -> searchText.contains(keyword) }) {
+            val matched = keywords.firstOrNull { keyword -> searchText.contains(keyword) }
+            if (matched != null) {
+                Log.d(TAG, "Matched category='$category' via keyword='$matched'")
                 return category
             }
         }
+
+        Log.w(TAG, "No keyword matched — falling back to 'Other'. merchant='$merchant', body='${body.take(100)}'")
         return "Other"
     }
 }

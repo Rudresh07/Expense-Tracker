@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.work.*
 import com.rudy.expensetracker.repository.CategoryRepository
+import com.rudy.expensetracker.repository.MerchantLearningRepository
 import com.rudy.expensetracker.repository.TransactionRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,7 +20,8 @@ class PastSmsScanWorker(
 ) : CoroutineWorker(ctx, params), KoinComponent {
 
     private val repository: TransactionRepository by inject()
-    private val categoryRepository: CategoryRepository by inject()  // LINE 21 — added
+    private val categoryRepository: CategoryRepository by inject()
+    private val learningRepository: MerchantLearningRepository by inject()
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         Log.d(TAG, "doWork() started, attempt=$runAttemptCount")
@@ -53,11 +55,7 @@ class PastSmsScanWorker(
             Log.d(TAG, "Total SMS in range: ${cursor.count}")
 
             categoryRepository.initializeDefaultCategories()
-            // LINE 58–62 — resolve a real category ID before the loop
-            val categoryId = categoryRepository.getCategoryByName("Other")?.id
-                ?: categoryRepository.getAllCategories().firstOrNull()?.id
-                ?: 1
-            Log.d(TAG, "Using categoryId=$categoryId for all parsed transactions")
+            Log.d(TAG, "Default categories initialized")
 
             var totalSeen = 0
             var skippedNotBank = 0
@@ -81,7 +79,25 @@ class PastSmsScanWorker(
 
                     Log.d(TAG, "Bank SMS from [$sender]: ${body.take(80)}…")
 
-                    val txn = SmsParser.parse(body, categoryId)  // LINE 83 — pass categoryId
+                    val merchant = SmsParser.parseMerchant(body)
+                    val merchantKey = merchant?.lowercase()?.trim() ?: ""
+                    val categoryName = SmsCategorizer.categorize(merchant, body)
+
+                    // For historical scan: apply learning for direct merchants, but no notifications
+                    val rawVpa = Regex("""[A-Za-z0-9._\-]+@[A-Za-z0-9]+""").find(body)?.value
+                    val isWalletProxy = rawVpa != null && WalletVpaDetector.isWalletProxy(rawVpa)
+                    val learnedCategoryId = if (!isWalletProxy && merchantKey.isNotBlank() && categoryName == "Other")
+                        learningRepository.findConfirmedCategory(merchantKey) else null
+
+                    val categoryId = learnedCategoryId
+                        ?: categoryRepository.getCategoryByName(categoryName)?.id
+                        ?: categoryRepository.getCategoryByName("Other")?.id
+                        ?: categoryRepository.getAllCategories().firstOrNull()?.id
+                        ?: 1
+
+                    Log.d(TAG, "Resolved: merchant='$merchant', category='$categoryName', id=$categoryId, learned=${learnedCategoryId != null}")
+
+                    val txn = SmsParser.parse(body, categoryId)
                     if (txn == null) {
                         Log.w(TAG, "Parse failed for body: ${body.take(120)}")
                         skippedParseFail++

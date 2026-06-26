@@ -44,6 +44,10 @@ android {
         kotlinCompilerExtensionVersion = "1.5.15"
     }
 
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
 }
 
 kotlin {
@@ -65,6 +69,7 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.perf)
+    implementation("com.google.firebase:firebase-config-ktx:22.1.0")
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.firebase.messaging)
     implementation(libs.ui.test.junit4)

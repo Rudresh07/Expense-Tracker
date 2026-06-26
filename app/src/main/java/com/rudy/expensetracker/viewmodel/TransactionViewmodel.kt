@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rudy.expensetracker.model.Transaction
 import com.rudy.expensetracker.model.TransactionWithCategory
+import com.rudy.expensetracker.repository.MerchantLearningRepository
 import com.rudy.expensetracker.repository.TransactionRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -13,7 +14,10 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-class TransactionViewmodel(private val repository: TransactionRepository): ViewModel() {
+class TransactionViewmodel(
+    private val repository: TransactionRepository,
+    private val learningRepository: MerchantLearningRepository,
+) : ViewModel() {
 
     // Expose a StateFlow for the list of all transactions
 
@@ -49,6 +53,46 @@ class TransactionViewmodel(private val repository: TransactionRepository): ViewM
             started = SharingStarted.WhileSubscribed(5000L),
             initialValue = 0.0
         )
+
+    val pendingReviewCount: StateFlow<Int> = repository.pendingReviewCount
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000L),
+            initialValue = 0,
+        )
+
+    val pendingReviewTransactions: StateFlow<List<TransactionWithCategory>> =
+        repository.pendingReviewTransactions
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000L),
+                initialValue = emptyList(),
+            )
+
+    private val _showPendingReviewSheet = MutableStateFlow(false)
+    val showPendingReviewSheet: StateFlow<Boolean> = _showPendingReviewSheet
+
+    // Set once the sheet has been triggered this session; never reset so returning to
+    // DashboardScreen doesn't re-show the sheet.
+    private var pendingReviewShownThisSession = false
+
+    fun onPendingReviewSheetShown() { _showPendingReviewSheet.value = false }
+
+    fun triggerPendingReviewSheetIfNeeded(count: Int) {
+        if (count > 0 && !pendingReviewShownThisSession) {
+            pendingReviewShownThisSession = true
+            _showPendingReviewSheet.value = true
+        }
+    }
+
+    fun confirmCategory(txnId: Int, categoryId: Int, merchantKey: String, isWalletProxy: Boolean) {
+        viewModelScope.launch {
+            repository.updateCategoryAndClearReview(txnId, categoryId)
+            if (!isWalletProxy && merchantKey.isNotBlank()) {
+                learningRepository.saveConfirmation(merchantKey, categoryId)
+            }
+        }
+    }
 
     private val _filteredTransactionList = MutableStateFlow<List<TransactionWithCategory>>(emptyList())
     val filteredTransactionList: StateFlow<List<TransactionWithCategory>> = _filteredTransactionList
