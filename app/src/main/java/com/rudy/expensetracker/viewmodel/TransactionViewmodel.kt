@@ -94,6 +94,13 @@ class TransactionViewmodel(
         }
     }
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery
+
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
     private val _filteredTransactionList = MutableStateFlow<List<TransactionWithCategory>>(emptyList())
     val filteredTransactionList: StateFlow<List<TransactionWithCategory>> = _filteredTransactionList
 

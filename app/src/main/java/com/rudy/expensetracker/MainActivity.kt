@@ -11,8 +11,10 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
@@ -58,6 +60,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         installSplashScreen()
+        enableEdgeToEdge()
         notificationHelper.createChannel()
         AutoConfirmWorker.enqueue(this)
 
@@ -72,10 +75,7 @@ class MainActivity : ComponentActivity() {
         Log.d(TAG, "onCreate — READ_SMS=$readGranted, RECEIVE_SMS=$receiveGranted, scanDone=${preferenceManager.isInitialSmsScanDone()}")
 
         if (!readGranted || !receiveGranted) {
-            Log.d(TAG, "Launching permission request")
-            smsPermissionLauncher.launch(
-                arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS)
-            )
+            showSmsPermissionRationale()
         } else {
             // Permissions already granted (returning user) — run scan if not done yet
             enqueuePastSmsScanIfNeeded()
@@ -95,13 +95,37 @@ class MainActivity : ComponentActivity() {
         setContent {
             ExpenseTrackerTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .safeDrawingPadding(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     ExpenseNavGraph(deepLinkRoute = deepLinkRoute)
                 }
             }
         }
+    }
+
+    private fun showSmsPermissionRationale() {
+        AlertDialog.Builder(this)
+            .setTitle("Automatic transaction detection")
+            .setMessage(
+                "ExpenseTracker can read incoming SMS messages to automatically detect bank " +
+                "and UPI transactions and add them to your expense log, so you don't have to " +
+                "enter every transaction by hand. This requires SMS permissions.\n\n" +
+                "If you don't grant this, you can still add and track expenses manually."
+            )
+            .setPositiveButton("Continue") { _, _ ->
+                Log.d(TAG, "Launching permission request")
+                smsPermissionLauncher.launch(
+                    arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS)
+                )
+            }
+            .setNegativeButton("Not Now") { _, _ ->
+                Log.w(TAG, "User declined SMS permission rationale")
+            }
+            .setCancelable(false)
+            .show()
     }
 
     private fun enqueuePastSmsScanIfNeeded() {
@@ -118,6 +142,9 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
         val pm = getSystemService(PowerManager::class.java) ?: return
         if (pm.isIgnoringBatteryOptimizations(packageName)) return
+        if (preferenceManager.isBatteryOptimizationPromptShown()) return
+
+        preferenceManager.setBatteryOptimizationPromptShown()
 
         AlertDialog.Builder(this)
             .setTitle("Enable background SMS reading")

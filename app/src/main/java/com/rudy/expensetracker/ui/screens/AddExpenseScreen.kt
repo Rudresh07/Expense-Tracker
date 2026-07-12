@@ -470,13 +470,15 @@ fun AddExpenseScreen(
         showDeleteDialog = showDeleteDialog,
         categoryToDelete = categoryToDelete,
         onDeleteConfirm = {
-            categoryViewModel.deleteCategory(categoryToDelete!!)
-            if (selectedCategory == categoryToDelete) {
-                selectedCategory = null
+            categoryToDelete?.let { category ->
+                categoryViewModel.deleteCategory(category)
+                if (selectedCategory == category) {
+                    selectedCategory = null
+                }
+                Toast.makeText(context, "Category deleted", Toast.LENGTH_SHORT).show()
             }
             showDeleteDialog = false
             categoryToDelete = null
-            Toast.makeText(context, "Category deleted", Toast.LENGTH_SHORT).show()
         },
         onDeleteDismiss = {
             showDeleteDialog = false

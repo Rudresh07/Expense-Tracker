@@ -41,4 +41,7 @@ class PreferenceManager(context: Context) {
     fun setInitialSmsScanDone() { mPrefs.edit { putBoolean("initial_sms_scan_done", true) } }
     fun isInitialSmsScanDone(): Boolean = mPrefs.getBoolean("initial_sms_scan_done", false)
 
+    fun setBatteryOptimizationPromptShown() { mPrefs.edit { putBoolean("battery_opt_prompt_shown", true) } }
+    fun isBatteryOptimizationPromptShown(): Boolean = mPrefs.getBoolean("battery_opt_prompt_shown", false)
+
 }

@@ -57,11 +57,6 @@ fun ExpenseNavGraph(
             DashboardScreen(
                 onAddExpenseClick = { navController.navigate("add_expense") },
                 onStatisticsClick = { navController.navigate("statistics") },
-                onLogoutClick = {
-                    navController.navigate("auth") {
-                        popUpTo("dashboard") { inclusive = true }
-                    }
-                },
                 onViewAllTransactions = { navController.navigate("all_transactions") },
                 onReviewClick = { navController.navigate("pending_review") },
             )

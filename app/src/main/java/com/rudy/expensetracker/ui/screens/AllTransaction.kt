@@ -26,8 +26,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -39,6 +41,8 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -94,6 +98,7 @@ fun AllTransactionsScreen(
 
     val viewModel: TransactionViewmodel = koinViewModel()
     val allTransactions by viewModel.transactionList.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
 
     // Dark mode colors
     val backgroundColor = if (isDarkTheme) Color(0xFF1C1C1E) else Color(0xFFF8F9FA)
@@ -110,7 +115,7 @@ fun AllTransactionsScreen(
     val categoryFilterOptions = listOf("All") + allTransactions.map { it.category.name }.distinct()
 
     // Apply filters to transactions
-    val filteredTransactions = remember(allTransactions, selectedTimeFilter, selectedTypeFilter, selectedCategoryFilter) {
+    val filteredTransactions = remember(allTransactions, selectedTimeFilter, selectedTypeFilter, selectedCategoryFilter, searchQuery) {
         var filtered = allTransactions
 
         // Filter by time
@@ -147,6 +152,14 @@ fun AllTransactionsScreen(
         // Filter by category
         if (selectedCategoryFilter != "All") {
             filtered = filtered.filter { it.category.name == selectedCategoryFilter }
+        }
+
+        // Filter by search query — matches title (merchant/UPI) or category name
+        if (searchQuery.isNotBlank()) {
+            filtered = filtered.filter { txn ->
+                txn.transaction.title.contains(searchQuery, ignoreCase = true) ||
+                txn.category.name.contains(searchQuery, ignoreCase = true)
+            }
         }
 
         // Sort by latest first
@@ -249,7 +262,7 @@ fun AllTransactionsScreen(
                 // Header
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 20.dp)
+                    modifier = Modifier.padding(bottom = 12.dp)
                 ) {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -278,6 +291,53 @@ fun AllTransactionsScreen(
                         )
                     }
                 }
+
+                // Search field
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.updateSearchQuery(it) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    placeholder = {
+                        Text(
+                            "Search transactions",
+                            color = textSecondaryColor,
+                            fontSize = 12.sp
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = textSecondaryColor,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotBlank()) {
+                            IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = "Clear search",
+                                    tint = textSecondaryColor,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = Orange,
+                        unfocusedBorderColor = if (isDarkTheme) Color(0xFF3A3A3C) else Color(0xFFDDDDDD),
+                        focusedContainerColor = surfaceColor,
+                        unfocusedContainerColor = surfaceColor,
+                        cursorColor = Orange
+                    )
+                )
 
                 // Filters
                 Column(
@@ -637,6 +697,51 @@ fun AllTransactionsScreen(
                     .background(appBarColor)
                     .padding(16.dp)
             ) {
+                // Search field
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.updateSearchQuery(it) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    placeholder = {
+                        Text(
+                            "Search by merchant or category",
+                            color = textSecondaryColor,
+                            fontSize = 14.sp
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = textSecondaryColor
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotBlank()) {
+                            IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = "Clear search",
+                                    tint = textSecondaryColor
+                                )
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = Orange,
+                        unfocusedBorderColor = if (isDarkTheme) Color(0xFF3A3A3C) else Color(0xFFDDDDDD),
+                        focusedContainerColor = surfaceColor,
+                        unfocusedContainerColor = surfaceColor,
+                        cursorColor = Orange
+                    )
+                )
+
                 Text(
                     text = "Filters",
                     fontSize = 16.sp,

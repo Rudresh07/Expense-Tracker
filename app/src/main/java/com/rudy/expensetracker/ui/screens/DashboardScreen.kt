@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.BarChart
@@ -91,7 +90,6 @@ import kotlin.math.abs
 fun DashboardScreen(
     onAddExpenseClick: () -> Unit,
     onStatisticsClick: () -> Unit,
-    onLogoutClick: () -> Unit,
     onViewAllTransactions: () -> Unit,
     onReviewClick: () -> Unit,
 ) {
@@ -110,7 +108,6 @@ fun DashboardScreen(
     val textSecondaryColor = if (isDarkMode) Color(0xFFB0B0B0) else Color.Gray
     val iconColor = if (isDarkMode) Color(0xFFE0E0E0) else Color.Gray
 
-    var showLogoutDialog by rememberSaveable { mutableStateOf(false) }
     var selectedFilter by rememberSaveable { mutableStateOf("7 days") }
     var showFilterDropdown by rememberSaveable { mutableStateOf(false) }
 
@@ -198,23 +195,18 @@ fun DashboardScreen(
             showFilterDropdown = showFilterDropdown,
             filteredTransactions = filteredTransactions,
             filterOptions = filterOptions,
-            showLogoutDialog = showLogoutDialog,
             monthlyBudget = monthlyBudget,
             monthlyExpense = currentMonthExpense,
             onSetBudgetClick = { showBudgetDialog = true },
             onAddExpenseClick = { onAddExpenseClick()
                                 firebaseEvents.logEvent("add_expense_clicked",   params = mapOf(
-                                    "userName" to authManager.getUserName(),
-                                    "email" to authManager.getUserEmail(),
                                     "screenConfiguration" to (if(isLandscape) "landscape" else "portrait")
                                 )) },
 
             onStatisticsClick = onStatisticsClick,
-            onLogoutClick = onLogoutClick,
             onViewAllTransactions = onViewAllTransactions,
             onFilterChange = { selectedFilter = it },
-            onFilterDropdownChange = { showFilterDropdown = it },
-            onLogoutDialogChange = { showLogoutDialog = it }
+            onFilterDropdownChange = { showFilterDropdown = it }
 
         )
     } else {
@@ -235,19 +227,14 @@ fun DashboardScreen(
             showFilterDropdown = showFilterDropdown,
             filteredTransactions = filteredTransactions,
             filterOptions = filterOptions,
-            showLogoutDialog = showLogoutDialog,
             onAddExpenseClick = { onAddExpenseClick()
                 firebaseEvents.logEvent("add_expense_clicked",   params = mapOf(
-                    "userName" to authManager.getUserName(),
-                    "email" to authManager.getUserEmail(),
                     "screenConfiguration" to "portrait"
                 ))},
             onStatisticsClick = onStatisticsClick,
-            onLogoutClick = onLogoutClick,
             onViewAllTransactions = onViewAllTransactions,
             onFilterChange = { selectedFilter = it },
             onFilterDropdownChange = { showFilterDropdown = it },
-            onLogoutDialogChange = { showLogoutDialog = it },
             monthlyBudget = monthlyBudget,
             monthlyExpense = currentMonthExpense,
             onSetBudgetClick = { showBudgetDialog = true }
@@ -323,15 +310,12 @@ fun DashboardScreen(
     showFilterDropdown: Boolean,
     filteredTransactions: List<TransactionWithCategory>,
     filterOptions: List<String>,
-    showLogoutDialog: Boolean,
     onAddExpenseClick: () -> Unit,
     onStatisticsClick: () -> Unit,
-    onLogoutClick: () -> Unit,
     onViewAllTransactions: () -> Unit,
     onReviewClick: () -> Unit,
     onFilterChange: (String) -> Unit,
     onFilterDropdownChange: (Boolean) -> Unit,
-    onLogoutDialogChange: (Boolean) -> Unit,
     onSetBudgetClick: () -> Unit,
 ) {
     Row(
@@ -354,7 +338,6 @@ fun DashboardScreen(
                 iconColor = iconColor,
                 pendingReviewCount = pendingReviewCount,
                 onReviewClick = onReviewClick,
-                onLogoutDialogChange = onLogoutDialogChange,
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -470,17 +453,6 @@ fun DashboardScreen(
             }
         }
     }
-
-    // Logout Dialog
-    LogoutDialog(
-        showLogoutDialog = showLogoutDialog,
-        textPrimaryColor = textPrimaryColor,
-        textSecondaryColor = textSecondaryColor,
-        surfaceColor = surfaceColor,
-        authManager = authManager,
-        onLogoutDialogChange = onLogoutDialogChange,
-        onLogoutClick = onLogoutClick
-    )
 }
 
 @Composable
@@ -502,15 +474,12 @@ fun DashboardScreen(
     showFilterDropdown: Boolean,
     filteredTransactions: List<TransactionWithCategory>,
     filterOptions: List<String>,
-    showLogoutDialog: Boolean,
     onAddExpenseClick: () -> Unit,
     onStatisticsClick: () -> Unit,
-    onLogoutClick: () -> Unit,
     onViewAllTransactions: () -> Unit,
     onReviewClick: () -> Unit,
     onFilterChange: (String) -> Unit,
     onFilterDropdownChange: (Boolean) -> Unit,
-    onLogoutDialogChange: (Boolean) -> Unit,
     onSetBudgetClick: () -> Unit,
 ) {
     Column(
@@ -527,7 +496,6 @@ fun DashboardScreen(
             iconColor = iconColor,
             pendingReviewCount = pendingReviewCount,
             onReviewClick = onReviewClick,
-            onLogoutDialogChange = onLogoutDialogChange,
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -607,17 +575,6 @@ fun DashboardScreen(
             onStatisticsClick = onStatisticsClick
         )
     }
-
-    // Logout Dialog
-    LogoutDialog(
-        showLogoutDialog = showLogoutDialog,
-        textPrimaryColor = textPrimaryColor,
-        textSecondaryColor = textSecondaryColor,
-        surfaceColor = surfaceColor,
-        authManager = authManager,
-        onLogoutDialogChange = onLogoutDialogChange,
-        onLogoutClick = onLogoutClick
-    )
 }
 
 @Composable
@@ -628,7 +585,6 @@ private fun HeaderSection(
     iconColor: Color,
     pendingReviewCount: Int,
     onReviewClick: () -> Unit,
-    onLogoutDialogChange: (Boolean) -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -920,55 +876,6 @@ private fun EmptyTransactionsMessage(
             text = "No transactions found for the selected period",
             color = textSecondaryColor,
             fontSize = 14.sp
-        )
-    }
-}
-
-@Composable
-private fun LogoutDialog(
-    showLogoutDialog: Boolean,
-    textPrimaryColor: Color,
-    textSecondaryColor: Color,
-    surfaceColor: Color,
-    authManager: AuthManager,
-    onLogoutDialogChange: (Boolean) -> Unit,
-    onLogoutClick: () -> Unit
-) {
-    if (showLogoutDialog) {
-        AlertDialog(
-            onDismissRequest = { onLogoutDialogChange(false) },
-            title = {
-                Text(
-                    "Logout",
-                    color = textPrimaryColor
-                )
-            },
-            text = {
-                Text(
-                    "Are you sure you want to logout?",
-                    color = textSecondaryColor
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        authManager.logout()
-                        onLogoutDialogChange(false)
-                        onLogoutClick()
-                    }
-                ) {
-                    Text("Logout", color = Orange)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { onLogoutDialogChange(false) }) {
-                    Text(
-                        "Cancel",
-                        color = textSecondaryColor
-                    )
-                }
-            },
-            containerColor = surfaceColor
         )
     }
 }
@@ -1288,7 +1195,6 @@ private fun HeaderSectionNoBadgePreview() {
         iconColor = Color.Gray,
         pendingReviewCount = 0,
         onReviewClick = {},
-        onLogoutDialogChange = {},
     )
 }
 
@@ -1302,7 +1208,6 @@ private fun HeaderSectionBadgePreview() {
         iconColor = Color.Gray,
         pendingReviewCount = 5,
         onReviewClick = {},
-        onLogoutDialogChange = {},
     )
 }
 
@@ -1317,6 +1222,5 @@ private fun HeaderSectionDarkOverflowPreview() {
         iconColor = Color(0xFFE0E0E0),
         pendingReviewCount = 12,
         onReviewClick = {},
-        onLogoutDialogChange = {},
     )
 }
