@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -92,6 +93,7 @@ fun DashboardScreen(
     onStatisticsClick: () -> Unit,
     onViewAllTransactions: () -> Unit,
     onReviewClick: () -> Unit,
+    onSettingsClick: () -> Unit,
 ) {
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
@@ -191,6 +193,7 @@ fun DashboardScreen(
             totalIncome = totalIncome,
             pendingReviewCount = pendingReviewCount,
             onReviewClick = onReviewClick,
+            onSettingsClick = onSettingsClick,
             selectedFilter = selectedFilter,
             showFilterDropdown = showFilterDropdown,
             filteredTransactions = filteredTransactions,
@@ -223,6 +226,7 @@ fun DashboardScreen(
             todayExpense = todayExpense,
             pendingReviewCount = pendingReviewCount,
             onReviewClick = onReviewClick,
+            onSettingsClick = onSettingsClick,
             selectedFilter = selectedFilter,
             showFilterDropdown = showFilterDropdown,
             filteredTransactions = filteredTransactions,
@@ -314,6 +318,7 @@ fun DashboardScreen(
     onStatisticsClick: () -> Unit,
     onViewAllTransactions: () -> Unit,
     onReviewClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     onFilterChange: (String) -> Unit,
     onFilterDropdownChange: (Boolean) -> Unit,
     onSetBudgetClick: () -> Unit,
@@ -338,6 +343,7 @@ fun DashboardScreen(
                 iconColor = iconColor,
                 pendingReviewCount = pendingReviewCount,
                 onReviewClick = onReviewClick,
+                onSettingsClick = onSettingsClick,
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -478,6 +484,7 @@ fun DashboardScreen(
     onStatisticsClick: () -> Unit,
     onViewAllTransactions: () -> Unit,
     onReviewClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     onFilterChange: (String) -> Unit,
     onFilterDropdownChange: (Boolean) -> Unit,
     onSetBudgetClick: () -> Unit,
@@ -496,6 +503,7 @@ fun DashboardScreen(
             iconColor = iconColor,
             pendingReviewCount = pendingReviewCount,
             onReviewClick = onReviewClick,
+            onSettingsClick = onSettingsClick,
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -585,6 +593,7 @@ private fun HeaderSection(
     iconColor: Color,
     pendingReviewCount: Int,
     onReviewClick: () -> Unit,
+    onSettingsClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -600,31 +609,41 @@ private fun HeaderSection(
                 color = textPrimaryColor,
             )
         }
-        Box {
-            IconButton(onClick = onReviewClick) {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = "Review transactions",
-                    tint = Orange,
-                    modifier = Modifier.size(26.dp),
-                )
-            }
-            if (pendingReviewCount > 0) {
-                Box(
-                    modifier = Modifier
-                        .size(16.dp)
-                        .clip(CircleShape)
-                        .background(Color.Red)
-                        .align(Alignment.TopEnd),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = if (pendingReviewCount > 9) "9+" else "$pendingReviewCount",
-                        color = Color.White,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box {
+                IconButton(onClick = onReviewClick) {
+                    Icon(
+                        imageVector = Icons.Default.Notifications,
+                        contentDescription = "Review transactions",
+                        tint = Orange,
+                        modifier = Modifier.size(26.dp),
                     )
                 }
+                if (pendingReviewCount > 0) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(Color.Red)
+                            .align(Alignment.TopEnd),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = if (pendingReviewCount > 9) "9+" else "$pendingReviewCount",
+                            color = Color.White,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            }
+            IconButton(onClick = onSettingsClick) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = iconColor,
+                    modifier = Modifier.size(24.dp),
+                )
             }
         }
     }
@@ -1195,6 +1214,7 @@ private fun HeaderSectionNoBadgePreview() {
         iconColor = Color.Gray,
         pendingReviewCount = 0,
         onReviewClick = {},
+        onSettingsClick = {},
     )
 }
 
@@ -1208,6 +1228,7 @@ private fun HeaderSectionBadgePreview() {
         iconColor = Color.Gray,
         pendingReviewCount = 5,
         onReviewClick = {},
+        onSettingsClick = {},
     )
 }
 
@@ -1222,5 +1243,6 @@ private fun HeaderSectionDarkOverflowPreview() {
         iconColor = Color(0xFFE0E0E0),
         pendingReviewCount = 12,
         onReviewClick = {},
+        onSettingsClick = {},
     )
 }

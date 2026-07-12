@@ -58,14 +58,12 @@ import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import com.rudy.expensetracker.analytics.FirebaseAnalytics
 import com.rudy.expensetracker.ui.theme.Orange
+import com.rudy.expensetracker.utils.AppLinks
 import com.rudy.expensetracker.utils.AuthManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import org.koin.compose.getKoin
-
-// TODO: replace with the real hosted privacy policy URL before Play Store submission
-private const val PRIVACY_POLICY_URL = "https://rudresh07.github.io/ExpenseTrackerPrivacyPolicy/"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -514,7 +512,7 @@ private fun AuthForm(
         // Privacy Policy
         val context = LocalContext.current
         TextButton(onClick = {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_POLICY_URL)))
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(AppLinks.PRIVACY_POLICY_URL)))
         }) {
             Text(
                 text = "Privacy Policy",

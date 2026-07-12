@@ -14,6 +14,7 @@ import com.rudy.expensetracker.ui.screens.AuthScreen
 import com.rudy.expensetracker.ui.screens.DashboardScreen
 import com.rudy.expensetracker.ui.screens.ExpenseStatisticsScreen
 import com.rudy.expensetracker.ui.screens.PendingReviewScreen
+import com.rudy.expensetracker.ui.screens.SettingsScreen
 import com.rudy.expensetracker.ui.screens.SplashScreen
 import org.koin.compose.getKoin
 
@@ -59,6 +60,13 @@ fun ExpenseNavGraph(
                 onStatisticsClick = { navController.navigate("statistics") },
                 onViewAllTransactions = { navController.navigate("all_transactions") },
                 onReviewClick = { navController.navigate("pending_review") },
+                onSettingsClick = { navController.navigate("settings") },
+            )
+        }
+
+        composable("settings") {
+            SettingsScreen(
+                onBackClick = { navController.popBackStack() },
             )
         }
         composable("add_expense") {
