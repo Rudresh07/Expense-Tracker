@@ -46,7 +46,7 @@ class TransactionRepositoryTest {
     @Test
     fun `addTransaction delegates to dao insertExpense`() = runTest {
         val transaction = buildTransaction()
-        coJustRun { dao.insertExpense(transaction) }
+        coEvery { dao.insertExpense(transaction) } returns 1L
 
         repository.addTransaction(transaction)
 
