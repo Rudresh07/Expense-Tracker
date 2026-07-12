@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.textfield.TextInputLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/searchInputLayout"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginTop="8dp"
+    android:layout_marginBottom="8dp"
+    android:hint="@string/search_hint"
+    app:boxBackgroundColor="?attr/colorSurface"
+    app:boxStrokeColor="?attr/colorOutline"
+    app:boxStrokeWidthFocused="2dp"
+    app:endIconMode="clear_text"
+    app:endIconTint="?attr/colorOnSurfaceVariant"
+    app:hintTextColor="?attr/colorPrimary"
+    app:placeholderTextColor="?attr/colorOnSurfaceVariant"
+    app:startIconDrawable="@drawable/ic_search"
+    app:startIconTint="?attr/colorOnSurfaceVariant"
+    app:boxCornerRadiusBottomEnd="28dp"
+    app:boxCornerRadiusBottomStart="28dp"
+    app:boxCornerRadiusTopEnd="28dp"
+    app:boxCornerRadiusTopStart="28dp"
+    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+    <!-- strings.xml: <string name="search_hint">Search transactions…</string> -->
+
+    <com.google.android.material.textfield.TextInputEditText
+        android:id="@+id/searchEditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        android:inputType="textFilter"
+        android:imeOptions="actionSearch"
+        android:maxLines="1"
+        android:textColor="?attr/colorOnSurface"
+        android:textColorHint="?attr/colorOnSurfaceVariant"
+        android:textSize="16sp" />
+
+</com.google.android.material.textfield.TextInputLayout>

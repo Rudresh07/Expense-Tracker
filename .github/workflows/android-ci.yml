@@ -3,9 +3,64 @@ name: Android CI
 on:
   push:
     branches:
+      - expense_tracker_qa
       - main
+      - app_test_case
+  pull_request:
+    types: [opened, reopened, synchronize]
   workflow_dispatch:
 jobs:
+  #Lint checking
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Grant Execute Permission To Gradle
+        run: chmod +x gradlew
+
+      - name: Run Lint
+        run: ./gradlew lintDebug
+
+      - name: Upload HTML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint.html
+          path: app/build/reports/lint-results-debug.html
+
+  #Test case running and report
+  unit-test:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Grant Execute Permission To Gradle
+        run: chmod +x gradlew
+
+      - name: Run Test Cases
+        run: ./gradlew test
+
+      - name: Upload Testing Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: testcase.html
+          path: app/build/reports/tests/testDebugUnitTest/
+
   build:
     name: Build Expense Tracker
     runs-on: ubuntu-latest
@@ -18,7 +73,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
       - name: Grant Execute Permission To Gradle
         run: chmod +x gradlew

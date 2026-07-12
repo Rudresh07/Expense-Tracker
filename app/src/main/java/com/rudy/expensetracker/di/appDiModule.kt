@@ -3,7 +3,9 @@ package com.rudy.expensetracker.di
 import androidx.room.Room
 import com.rudy.expensetracker.analytics.FirebaseAnalytics
 import com.rudy.expensetracker.database.AppDatabase
+import com.rudy.expensetracker.notifications.NotificationHelper
 import com.rudy.expensetracker.repository.CategoryRepository
+import com.rudy.expensetracker.repository.MerchantLearningRepository
 import com.rudy.expensetracker.repository.TransactionRepository
 import com.rudy.expensetracker.utils.AuthManager
 import com.rudy.expensetracker.utils.PreferenceManager
@@ -20,16 +22,25 @@ val appDiModule = module {
             androidContext(),
             AppDatabase::class.java,
             "expense_tracker_db"
-        ).build()
+        )
+            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .build()
     }
 
     factory { get<AppDatabase>().expenseDao() }
-    factory {get<AppDatabase>().categoryDao() }
+    factory { get<AppDatabase>().categoryDao() }
+    factory { get<AppDatabase>().merchantLearningDao() }
+
     single { FirebaseAnalytics() }
-    factory { TransactionRepository(get()) }
+    single { NotificationHelper(androidContext()) }
+
+    factory { TransactionRepository(get(), androidContext()) }
     factory { CategoryRepository(get()) }
-    single{ PreferenceManager(androidContext()) }
-    single { AuthManager(get(),get(),get()) }
-    viewModel { TransactionViewmodel(get()) }
+    factory { MerchantLearningRepository(get()) }
+
+    single { PreferenceManager(androidContext()) }
+    single { AuthManager(get(), get(), get()) }
+
+    viewModel { TransactionViewmodel(get(), get()) }
     viewModel { CategoryViewModel(get()) }
 }

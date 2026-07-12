@@ -9,18 +9,27 @@ import kotlinx.parcelize.Parcelize
 import kotlin.random.Random
 
 @Parcelize
-@Entity(tableName = "transactions") // Using "transactions" as the table name
+@Entity(tableName = "transactions")
 data class Transaction(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
     val category: Int,
-    val title:String,
+    val title: String,
     val transactionType: Int,
     val time: String,
     val amount: Double,
     val date: String,
-    val note:String,
+    val note: String,
+    val needsReview: Boolean = false,
 ): Parcelable
+
+@Entity(tableName = "merchant_learning")
+data class MerchantLearning(
+    @PrimaryKey val merchantKey: String,
+    val confirmedCategoryId: Int,
+    val confirmCount: Int = 1,
+    val lastConfirmedAt: Long = System.currentTimeMillis(),
+)
 
 
 // Updated CategoryEntity for the hybrid approach

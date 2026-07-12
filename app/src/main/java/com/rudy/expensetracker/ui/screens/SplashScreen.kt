@@ -66,12 +66,12 @@ fun SplashScreen(
 
         // Wait a bit before navigating
         delay(1000)
-        if (authManager.isUserLoggedIn())
+        //if (authManager.isUserLoggedIn())
        onNavigateToHome()
 
-        else{
+       /* else{
             onNavigateToAuth()
-        }
+        }*/
     }
 
     Box(

@@ -22,12 +22,14 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -37,8 +39,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -55,14 +60,24 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import com.rudy.expensetracker.analytics.FirebaseAnalytics
+import com.rudy.expensetracker.database.CategoryDao
+import com.rudy.expensetracker.database.ExpenseDao
+import com.rudy.expensetracker.model.CategoryEntity
+import com.rudy.expensetracker.model.Transaction
 import com.rudy.expensetracker.model.TransactionWithCategory
 import com.rudy.expensetracker.ui.screens.LandscapeLayout
 import com.rudy.expensetracker.ui.theme.Orange
 import com.rudy.expensetracker.utils.AuthManager
 import com.rudy.expensetracker.utils.IconManager
+import com.rudy.expensetracker.utils.PreferenceManager
 import com.rudy.expensetracker.utils.toColor
 import com.rudy.expensetracker.viewmodel.TransactionViewmodel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.getKoin
 import java.time.LocalDate
@@ -75,8 +90,8 @@ import kotlin.math.abs
 fun DashboardScreen(
     onAddExpenseClick: () -> Unit,
     onStatisticsClick: () -> Unit,
-    onLogoutClick: () -> Unit,
     onViewAllTransactions: () -> Unit,
+    onReviewClick: () -> Unit,
 ) {
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
@@ -93,7 +108,6 @@ fun DashboardScreen(
     val textSecondaryColor = if (isDarkMode) Color(0xFFB0B0B0) else Color.Gray
     val iconColor = if (isDarkMode) Color(0xFFE0E0E0) else Color.Gray
 
-    var showLogoutDialog by rememberSaveable { mutableStateOf(false) }
     var selectedFilter by rememberSaveable { mutableStateOf("7 days") }
     var showFilterDropdown by rememberSaveable { mutableStateOf(false) }
 
@@ -101,14 +115,36 @@ fun DashboardScreen(
     val authManager: AuthManager = getKoin().get()
     val firebaseEvents: FirebaseAnalytics = getKoin().get()
 
+    val preferenceManager: PreferenceManager = getKoin().get()
+    var monthlyBudget by rememberSaveable { mutableStateOf(preferenceManager.getMonthlyBudget()) }
+
+    var showBudgetDialog by rememberSaveable { mutableStateOf(false) }
+
     val totalBalance by viewModel.totalBalance.collectAsState()
     val totalIncome by viewModel.totalIncome.collectAsState()
-    val totalExpense by viewModel.totalExpense.collectAsState()
     val transactions by viewModel.transactionList.collectAsState()
+    val pendingReviewCount by viewModel.pendingReviewCount.collectAsState()
+    val showPendingSheet by viewModel.showPendingReviewSheet.collectAsState()
+
+    LaunchedEffect(pendingReviewCount) {
+        viewModel.triggerPendingReviewSheetIfNeeded(pendingReviewCount)
+    }
 
     val filterOptions = listOf("1 day", "7 days")
     val dateFormatter = DateTimeFormatter.ofPattern("dd MM yyyy")
 
+
+    val currentMonthExpense = remember(transactions) {
+        val now = LocalDate.now()
+        val monthlyTxs = transactions.filter { tx ->
+            runCatching {
+                val d = LocalDate.parse(tx.transaction.date, dateFormatter)
+                d.year == now.year && d.monthValue == now.monthValue
+            }.getOrDefault(false)
+        }
+        // Net = expense − income. Negative means income > expense (progress bar shows 0).
+        (-monthlyTxs.sumOf { it.transaction.amount }).coerceAtLeast(0.0)
+    }
 
     // Filter transactions
     val filteredTransactions = remember(selectedFilter, transactions) {
@@ -153,25 +189,25 @@ fun DashboardScreen(
             totalBalance = totalBalance,
             todayExpense = todayExpense,
             totalIncome = totalIncome,
-            totalExpense = totalExpense,
+            pendingReviewCount = pendingReviewCount,
+            onReviewClick = onReviewClick,
             selectedFilter = selectedFilter,
             showFilterDropdown = showFilterDropdown,
             filteredTransactions = filteredTransactions,
             filterOptions = filterOptions,
-            showLogoutDialog = showLogoutDialog,
+            monthlyBudget = monthlyBudget,
+            monthlyExpense = currentMonthExpense,
+            onSetBudgetClick = { showBudgetDialog = true },
             onAddExpenseClick = { onAddExpenseClick()
                                 firebaseEvents.logEvent("add_expense_clicked",   params = mapOf(
-                                    "userName" to authManager.getUserName(),
-                                    "email" to authManager.getUserEmail(),
                                     "screenConfiguration" to (if(isLandscape) "landscape" else "portrait")
                                 )) },
 
             onStatisticsClick = onStatisticsClick,
-            onLogoutClick = onLogoutClick,
             onViewAllTransactions = onViewAllTransactions,
             onFilterChange = { selectedFilter = it },
-            onFilterDropdownChange = { showFilterDropdown = it },
-            onLogoutDialogChange = { showLogoutDialog = it }
+            onFilterDropdownChange = { showFilterDropdown = it }
+
         )
     } else {
         PortraitLayout(
@@ -185,24 +221,71 @@ fun DashboardScreen(
             totalBalance = totalBalance,
             totalIncome = totalIncome,
             todayExpense = todayExpense,
-            totalExpense = totalExpense,
+            pendingReviewCount = pendingReviewCount,
+            onReviewClick = onReviewClick,
             selectedFilter = selectedFilter,
             showFilterDropdown = showFilterDropdown,
             filteredTransactions = filteredTransactions,
             filterOptions = filterOptions,
-            showLogoutDialog = showLogoutDialog,
             onAddExpenseClick = { onAddExpenseClick()
                 firebaseEvents.logEvent("add_expense_clicked",   params = mapOf(
-                    "userName" to authManager.getUserName(),
-                    "email" to authManager.getUserEmail(),
                     "screenConfiguration" to "portrait"
                 ))},
             onStatisticsClick = onStatisticsClick,
-            onLogoutClick = onLogoutClick,
             onViewAllTransactions = onViewAllTransactions,
             onFilterChange = { selectedFilter = it },
             onFilterDropdownChange = { showFilterDropdown = it },
-            onLogoutDialogChange = { showLogoutDialog = it }
+            monthlyBudget = monthlyBudget,
+            monthlyExpense = currentMonthExpense,
+            onSetBudgetClick = { showBudgetDialog = true }
+        )
+    }
+
+    BudgetSettingDialog(
+        show = showBudgetDialog,
+        currentBudget = monthlyBudget,
+        surfaceColor = if (isDarkMode) Color(0xFF1E1E1E) else Color.White,
+        textPrimaryColor = if (isDarkMode) Color.White else Color.Black,
+        textSecondaryColor = if (isDarkMode) Color(0xFFB0B0B0) else Color.Gray,
+        onDismiss = { showBudgetDialog = false },
+        onConfirm = { newBudget ->
+            preferenceManager.setMonthlyBudget(newBudget)
+            monthlyBudget = newBudget
+            showBudgetDialog = false
+        }
+    )
+
+    if (showPendingSheet && pendingReviewCount > 0) {
+        AlertDialog(
+            onDismissRequest = { viewModel.onPendingReviewSheetShown() },
+            containerColor = if (isDarkMode) Color(0xFF1E1E1E) else Color.White,
+            title = {
+                Text(
+                    text = "Transactions need your input",
+                    color = if (isDarkMode) Color.White else Color.Black,
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                Text(
+                    text = "$pendingReviewCount transaction${if (pendingReviewCount > 1) "s were" else " was"} auto-categorised as Other. Tap Review to assign the correct category.",
+                    color = if (isDarkMode) Color(0xFFB0B0B0) else Color.Gray,
+                    fontSize = 14.sp,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onReviewClick()
+                    viewModel.onPendingReviewSheetShown()
+                }) {
+                    Text("Review Now", color = Orange)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onPendingReviewSheetShown() }) {
+                    Text("Later", color = if (isDarkMode) Color(0xFFB0B0B0) else Color.Gray)
+                }
+            }
         )
     }
 }
@@ -219,20 +302,21 @@ fun DashboardScreen(
     authManager: AuthManager,
     totalBalance: Double,
     totalIncome: Double,
-    totalExpense: Double,
     todayExpense: Double,
+    monthlyBudget: Double,
+    monthlyExpense: Double,
+    pendingReviewCount: Int,
     selectedFilter: String,
     showFilterDropdown: Boolean,
     filteredTransactions: List<TransactionWithCategory>,
     filterOptions: List<String>,
-    showLogoutDialog: Boolean,
     onAddExpenseClick: () -> Unit,
     onStatisticsClick: () -> Unit,
-    onLogoutClick: () -> Unit,
     onViewAllTransactions: () -> Unit,
+    onReviewClick: () -> Unit,
     onFilterChange: (String) -> Unit,
     onFilterDropdownChange: (Boolean) -> Unit,
-    onLogoutDialogChange: (Boolean) -> Unit
+    onSetBudgetClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -252,7 +336,8 @@ fun DashboardScreen(
                 textPrimaryColor = textPrimaryColor,
                 textSecondaryColor = textSecondaryColor,
                 iconColor = iconColor,
-                onLogoutDialogChange = onLogoutDialogChange
+                pendingReviewCount = pendingReviewCount,
+                onReviewClick = onReviewClick,
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -262,9 +347,21 @@ fun DashboardScreen(
                 isDarkMode = isDarkMode,
                 totalBalance = totalBalance,
                 totalIncome = totalIncome,
-                totalExpense = totalExpense,
+                monthlyExpense = monthlyExpense,
                 todayExpense = todayExpense,
                 modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            BudgetCard(
+                monthlyExpense = monthlyExpense,
+                monthlyBudget = monthlyBudget,
+                isDarkMode = isDarkMode,
+                surfaceColor = surfaceColor,
+                textPrimaryColor = textPrimaryColor,
+                textSecondaryColor = textSecondaryColor,
+                onSetBudgetClick = onSetBudgetClick,
             )
 
             Spacer(modifier = Modifier.weight(1f))
@@ -356,17 +453,6 @@ fun DashboardScreen(
             }
         }
     }
-
-    // Logout Dialog
-    LogoutDialog(
-        showLogoutDialog = showLogoutDialog,
-        textPrimaryColor = textPrimaryColor,
-        textSecondaryColor = textSecondaryColor,
-        surfaceColor = surfaceColor,
-        authManager = authManager,
-        onLogoutDialogChange = onLogoutDialogChange,
-        onLogoutClick = onLogoutClick
-    )
 }
 
 @Composable
@@ -380,20 +466,21 @@ fun DashboardScreen(
     authManager: AuthManager,
     totalBalance: Double,
     totalIncome: Double,
-    totalExpense: Double,
     todayExpense: Double,
+    monthlyBudget: Double,
+    monthlyExpense: Double,
+    pendingReviewCount: Int,
     selectedFilter: String,
     showFilterDropdown: Boolean,
     filteredTransactions: List<TransactionWithCategory>,
     filterOptions: List<String>,
-    showLogoutDialog: Boolean,
     onAddExpenseClick: () -> Unit,
     onStatisticsClick: () -> Unit,
-    onLogoutClick: () -> Unit,
     onViewAllTransactions: () -> Unit,
+    onReviewClick: () -> Unit,
     onFilterChange: (String) -> Unit,
     onFilterDropdownChange: (Boolean) -> Unit,
-    onLogoutDialogChange: (Boolean) -> Unit
+    onSetBudgetClick: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -407,7 +494,8 @@ fun DashboardScreen(
             textPrimaryColor = textPrimaryColor,
             textSecondaryColor = textSecondaryColor,
             iconColor = iconColor,
-            onLogoutDialogChange = onLogoutDialogChange
+            pendingReviewCount = pendingReviewCount,
+            onReviewClick = onReviewClick,
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -417,11 +505,23 @@ fun DashboardScreen(
             isDarkMode = isDarkMode,
             totalBalance = totalBalance,
             totalIncome = totalIncome,
-            totalExpense = totalExpense,
+            monthlyExpense = monthlyExpense,
             todayExpense = todayExpense
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+
+        BudgetCard(
+            monthlyExpense = monthlyExpense,
+            monthlyBudget = monthlyBudget,
+            isDarkMode = isDarkMode,
+            surfaceColor = surfaceColor,
+            textPrimaryColor = textPrimaryColor,
+            textSecondaryColor = textSecondaryColor,
+            onSetBudgetClick = onSetBudgetClick,
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Transactions Header
         TransactionsHeader(
@@ -475,17 +575,6 @@ fun DashboardScreen(
             onStatisticsClick = onStatisticsClick
         )
     }
-
-    // Logout Dialog
-    LogoutDialog(
-        showLogoutDialog = showLogoutDialog,
-        textPrimaryColor = textPrimaryColor,
-        textSecondaryColor = textSecondaryColor,
-        surfaceColor = surfaceColor,
-        authManager = authManager,
-        onLogoutDialogChange = onLogoutDialogChange,
-        onLogoutClick = onLogoutClick
-    )
 }
 
 @Composable
@@ -494,7 +583,8 @@ private fun HeaderSection(
     textPrimaryColor: Color,
     textSecondaryColor: Color,
     iconColor: Color,
-    onLogoutDialogChange: (Boolean) -> Unit
+    pendingReviewCount: Int,
+    onReviewClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -502,35 +592,40 @@ private fun HeaderSection(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
-            Text(
-                text = "Welcome!",
-                fontSize = 14.sp,
-                color = textSecondaryColor
-            )
+            Text(text = "Welcome!", fontSize = 14.sp, color = textSecondaryColor)
             Text(
                 text = authManager.getUserName(),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = textPrimaryColor
+                color = textPrimaryColor,
             )
         }
-        Row {
-            IconButton(onClick = { onLogoutDialogChange(true) }) {
+        Box {
+            IconButton(onClick = onReviewClick) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Logout,
-                    contentDescription = "Logout",
-                    modifier = Modifier.size(24.dp),
-                    tint = iconColor
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = "Review transactions",
+                    tint = Orange,
+                    modifier = Modifier.size(26.dp),
                 )
             }
-           /* IconButton(onClick = {throw RuntimeException("Test Crash") }) {
-                Icon(
-                    imageVector = Icons.Default.Menu,
-                    contentDescription = "Menu",
-                    modifier = Modifier.size(24.dp),
-                    tint = iconColor
-                )
-            }*/
+            if (pendingReviewCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clip(CircleShape)
+                        .background(Color.Red)
+                        .align(Alignment.TopEnd),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = if (pendingReviewCount > 9) "9+" else "$pendingReviewCount",
+                        color = Color.White,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
         }
     }
 }
@@ -541,7 +636,7 @@ private fun BalanceCard(
     totalBalance: Double,
     todayExpense: Double,
     totalIncome: Double,
-    totalExpense: Double,
+    monthlyExpense: Double,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -600,8 +695,8 @@ private fun BalanceCard(
                     color = Color.Green
                 )
                 IncomeExpenseItem(
-                    label = "Expense",
-                    amount = totalExpense,
+                    label = "Monthly",
+                    amount = monthlyExpense,
                     color = Color.Red
                 )
             }
@@ -786,55 +881,6 @@ private fun EmptyTransactionsMessage(
 }
 
 @Composable
-private fun LogoutDialog(
-    showLogoutDialog: Boolean,
-    textPrimaryColor: Color,
-    textSecondaryColor: Color,
-    surfaceColor: Color,
-    authManager: AuthManager,
-    onLogoutDialogChange: (Boolean) -> Unit,
-    onLogoutClick: () -> Unit
-) {
-    if (showLogoutDialog) {
-        AlertDialog(
-            onDismissRequest = { onLogoutDialogChange(false) },
-            title = {
-                Text(
-                    "Logout",
-                    color = textPrimaryColor
-                )
-            },
-            text = {
-                Text(
-                    "Are you sure you want to logout?",
-                    color = textSecondaryColor
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        authManager.logout()
-                        onLogoutDialogChange(false)
-                        onLogoutClick()
-                    }
-                ) {
-                    Text("Logout", color = Orange)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { onLogoutDialogChange(false) }) {
-                    Text(
-                        "Cancel",
-                        color = textSecondaryColor
-                    )
-                }
-            },
-            containerColor = surfaceColor
-        )
-    }
-}
-
-@Composable
 fun TransactionItem(
     transaction: TransactionWithCategory,
     isDarkMode: Boolean = isSystemInDarkTheme(),
@@ -961,4 +1007,220 @@ fun TransactionItem(
             }
         }
     }
+}
+
+@Composable
+private fun BudgetCard(
+    monthlyExpense: Double,
+    monthlyBudget: Double,
+    isDarkMode: Boolean,
+    surfaceColor: Color,
+    textPrimaryColor: Color,
+    textSecondaryColor: Color,
+    onSetBudgetClick: () -> Unit,
+) {
+    val progress = if (monthlyBudget > 0)
+        (monthlyExpense / monthlyBudget).toFloat().coerceIn(0f, 1f) else 0f
+    val barColor = if (progress >= 0.9f) Color(0xFFFF5252) else Orange
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = surfaceColor),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isDarkMode) 4.dp else 2.dp
+        )
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Monthly Budget",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = textPrimaryColor,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (monthlyBudget > 0) {
+                        Text(
+                            text = "₹${"%.0f".format(monthlyExpense)} / ₹${"%.0f".format(monthlyBudget)}",
+                            fontSize = 12.sp,
+                            color = textSecondaryColor,
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
+                    IconButton(
+                        onClick = onSetBudgetClick,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Set Budget",
+                            tint = Orange,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
+            if (monthlyBudget > 0) {
+                Spacer(modifier = Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp)),
+                    color = barColor,
+                    trackColor = if (isDarkMode) Color(0xFF3A3A3A) else Color(0xFFE0E0E0),
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${(progress * 100).toInt()}% used",
+                    fontSize = 11.sp,
+                    color = if (progress >= 0.9f) Color(0xFFFF5252) else textSecondaryColor,
+                )
+            } else {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "₹${"%.0f".format(monthlyExpense)} spent this month · Tap ✎ to set a budget",
+                    fontSize = 12.sp,
+                    color = textSecondaryColor,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BudgetSettingDialog(
+    show: Boolean,
+    currentBudget: Double,
+    surfaceColor: Color,
+    textPrimaryColor: Color,
+    textSecondaryColor: Color,
+    onDismiss: () -> Unit,
+    onConfirm: (Double) -> Unit,
+) {
+    if (!show) return
+    var input by remember(currentBudget) {
+        mutableStateOf(if (currentBudget > 0) "%.0f".format(currentBudget) else "")
+    }
+    val isValid = input.toDoubleOrNull()?.let { it > 0 } == true
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = surfaceColor,
+        title = { Text("Set Monthly Budget", color = textPrimaryColor) },
+        text = {
+            Column {
+                Text(
+                    text = "Enter your spending limit for this month",
+                    fontSize = 13.sp,
+                    color = textSecondaryColor,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { input = it.filter { c -> c.isDigit() || c == '.' } },
+                    label = { Text("Amount (₹)", color = textSecondaryColor) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { input.toDoubleOrNull()?.let { onConfirm(it) } },
+                enabled = isValid,
+            ) {
+                Text("Save", color = if (isValid) Orange else textSecondaryColor)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = textSecondaryColor)
+            }
+        }
+    )
+}
+
+// ── Preview helpers ───────────────────────────────────────────────────────────
+
+private object PreviewExpenseDao : ExpenseDao {
+    override suspend fun insertExpense(expense: Transaction): Long = 0L
+    override suspend fun updateExpense(expense: Transaction) {}
+    override suspend fun deleteExpense(expense: Transaction) {}
+    override fun getAllExpenses(): Flow<List<TransactionWithCategory>> = flowOf(emptyList())
+    override fun getExpenseById(expenseId: Int): Flow<TransactionWithCategory?> = flowOf(null)
+    override fun getTransactionsByMonthYear(month: String, year: String): Flow<List<TransactionWithCategory>> = flowOf(emptyList())
+    override fun getTotalBalance(): Flow<Double> = flowOf(0.0)
+    override fun getTodayExpense(currentDate: String): Flow<Double> = flowOf(0.0)
+    override fun getTotalIncome(): Flow<Double> = flowOf(0.0)
+    override fun getTotalExpense(): Flow<Double> = flowOf(0.0)
+    override suspend fun deleteAllTransactions() {}
+    override suspend fun updateCategoryAndClearReview(txnId: Int, categoryId: Int) {}
+    override suspend fun clearNeedsReview(txnId: Int) {}
+    override fun getPendingReviewCount(): Flow<Int> = flowOf(0)
+    override fun getPendingReviewTransactions(): Flow<List<TransactionWithCategory>> = flowOf(emptyList())
+    override suspend fun getStaleReviewTransactions(cutoffDate: String): List<TransactionWithCategory> = emptyList()
+}
+
+private object PreviewCategoryDao : CategoryDao {
+    override suspend fun getAllCategories(): List<CategoryEntity> = emptyList()
+    override suspend fun insertCategory(category: CategoryEntity) {}
+    override suspend fun deleteCategory(category: CategoryEntity) {}
+    override suspend fun deleteCategoryById(categoryId: Int) {}
+    override suspend fun getCategoryByName(name: String): CategoryEntity? = null
+    override suspend fun deleteAllCategories() {}
+}
+
+@Composable
+private fun previewAuthManager(name: String): AuthManager {
+    val context = LocalContext.current
+    val prefs = PreferenceManager(context).apply { setUserName(name) }
+    return AuthManager(prefs, PreviewExpenseDao, PreviewCategoryDao)
+}
+
+@Preview(name = "Header / light / no badge", showBackground = true, backgroundColor = 0xFFF5F5F5)
+@Composable
+private fun HeaderSectionNoBadgePreview() {
+    HeaderSection(
+        authManager = previewAuthManager("Rudresh Patel"),
+        textPrimaryColor = Color.Black,
+        textSecondaryColor = Color.Gray,
+        iconColor = Color.Gray,
+        pendingReviewCount = 0,
+        onReviewClick = {},
+    )
+}
+
+@Preview(name = "Header / light / badge", showBackground = true, backgroundColor = 0xFFF5F5F5)
+@Composable
+private fun HeaderSectionBadgePreview() {
+    HeaderSection(
+        authManager = previewAuthManager("Rudresh Patel"),
+        textPrimaryColor = Color.Black,
+        textSecondaryColor = Color.Gray,
+        iconColor = Color.Gray,
+        pendingReviewCount = 5,
+        onReviewClick = {},
+    )
+}
+
+@Preview(name = "Header / dark / overflow badge", showBackground = true,
+    backgroundColor = 0xFF121212, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun HeaderSectionDarkOverflowPreview() {
+    HeaderSection(
+        authManager = previewAuthManager("Rudresh Patel"),
+        textPrimaryColor = Color.White,
+        textSecondaryColor = Color(0xFFB0B0B0),
+        iconColor = Color(0xFFE0E0E0),
+        pendingReviewCount = 12,
+        onReviewClick = {},
+    )
 }

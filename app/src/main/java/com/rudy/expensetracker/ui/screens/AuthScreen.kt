@@ -1,5 +1,7 @@
 package com.rudy.expensetracker.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -60,6 +63,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import org.koin.compose.getKoin
+
+// TODO: replace with the real hosted privacy policy URL before Play Store submission
+private const val PRIVACY_POLICY_URL = "https://rudresh07.github.io/ExpenseTrackerPrivacyPolicy/"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,7 +101,6 @@ fun AuthScreen(
 
     // Theme colors
     val backgroundColor = if (isDarkTheme) Color(0xFF121212) else Color(0xFFF5F5F5)
-    val surfaceColor = if (isDarkTheme) Color(0xFF1E1E1E) else Color.White
     val textColor = if (isDarkTheme) Color.White else Color.Black
     val textSecondaryColor = if (isDarkTheme) Color(0xFFB0B0B0) else Color.Gray
     val errorBackgroundColor = if (isDarkTheme) Color(0xFF3D1A1A) else Color(0xFFFFEBEE)
@@ -143,7 +148,6 @@ fun AuthScreen(
                         isLoading = isLoading,
                         errorMessage = errorMessage,
                         isDarkTheme = isDarkTheme,
-                        surfaceColor = surfaceColor,
                         textColor = textColor,
                         textSecondaryColor = textSecondaryColor,
                         errorBackgroundColor = errorBackgroundColor,
@@ -178,12 +182,6 @@ fun AuthScreen(
                             )
                             firebaseEvents.logEvent("auth_attempt", mapOf("mode" to if (isLogin) "login" else "register"))
 
-                        },
-                        onUseDemoCredentials = {
-                            email = "demo@example.com"
-                            password = "password123"
-                            confirmPassword = "password123"
-                            errorMessage = ""
                         }
                     )
                 }
@@ -214,7 +212,6 @@ fun AuthScreen(
                     isLoading = isLoading,
                     errorMessage = errorMessage,
                     isDarkTheme = isDarkTheme,
-                    surfaceColor = surfaceColor,
                     textColor = textColor,
                     textSecondaryColor = textSecondaryColor,
                     errorBackgroundColor = errorBackgroundColor,
@@ -248,12 +245,6 @@ fun AuthScreen(
                             onSuccess = onLoginSuccess
                         )
                         firebaseEvents.logEvent("auth_attempt", mapOf("mode" to if (isLogin) "login" else "register"))
-                    },
-                    onUseDemoCredentials = {
-                        email = "demo@example.com"
-                        password = "password123"
-                        confirmPassword = "password123"
-                        errorMessage = ""
                     }
                 )
             }
@@ -335,7 +326,6 @@ private fun AuthForm(
     isLoading: Boolean,
     errorMessage: String,
     isDarkTheme: Boolean,
-    surfaceColor: Color,
     textColor: Color,
     textSecondaryColor: Color,
     errorBackgroundColor: Color,
@@ -347,7 +337,6 @@ private fun AuthForm(
     onConfirmPasswordVisibilityToggle: () -> Unit,
     onAuthModeToggle: () -> Unit,
     onAuthClick: () -> Unit,
-    onUseDemoCredentials: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -522,44 +511,20 @@ private fun AuthForm(
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Demo Credentials Card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = surfaceColor),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Demo Credentials",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Orange
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Email: demo@example.com\nPassword: password123",
-                    fontSize = 12.sp,
-                    color = textSecondaryColor,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                TextButton(onClick = onUseDemoCredentials) {
-                    Text(
-                        "Use Demo Credentials",
-                        color = Orange,
-                        fontSize = 12.sp
-                    )
-                }
-            }
+        // Privacy Policy
+        val context = LocalContext.current
+        TextButton(onClick = {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_POLICY_URL)))
+        }) {
+            Text(
+                text = "Privacy Policy",
+                color = textSecondaryColor,
+                fontSize = 12.sp
+            )
         }
     }
 }
+
 private fun handleAuthentication(
     email: String,
     password: String,

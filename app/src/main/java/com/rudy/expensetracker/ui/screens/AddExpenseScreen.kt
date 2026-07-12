@@ -104,7 +104,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddExpenseScreen(
-    transactionId: Int?, // null = add new
+    transactionId: Int?,
     onBackClick: () -> Unit,
     onExpenseAdded: () -> Unit,
     forceLightMode: Boolean = false,
@@ -207,7 +207,8 @@ fun AddExpenseScreen(
                 if (it == 0.0) "" else it.toString()
             }
 
-            // memo = transaction.memo ?: ""
+            memo = transaction.note ?: ""
+            title = transaction.title ?: ""
 
             selectedCategory = category
 
@@ -337,7 +338,7 @@ fun AddExpenseScreen(
             onBackClick = onBackClick,
             onSave = {
                 val amountValue = amount.toDoubleOrNull()
-                if (selectedCategory != null && amountValue != null && title.isNotEmpty() && amountValue > 0) {
+                if (selectedCategory != null && amountValue != null && amountValue > 0) {
                     val finalAmount = if (selectedTransactionType == 0) amountValue else -amountValue
 
                     if (transactionId != null) {
@@ -410,7 +411,7 @@ fun AddExpenseScreen(
             onBackClick = onBackClick,
             onSave = {
                 val amountValue = amount.toDoubleOrNull()
-                if (selectedCategory != null && amountValue != null && title.isNotEmpty() && amountValue > 0) {
+                if (selectedCategory != null && amountValue != null && amountValue > 0) {
                     val finalAmount = if (selectedTransactionType == 0) amountValue else -amountValue
 
                     if (transactionId != null) {
@@ -469,13 +470,15 @@ fun AddExpenseScreen(
         showDeleteDialog = showDeleteDialog,
         categoryToDelete = categoryToDelete,
         onDeleteConfirm = {
-            categoryViewModel.deleteCategory(categoryToDelete!!)
-            if (selectedCategory == categoryToDelete) {
-                selectedCategory = null
+            categoryToDelete?.let { category ->
+                categoryViewModel.deleteCategory(category)
+                if (selectedCategory == category) {
+                    selectedCategory = null
+                }
+                Toast.makeText(context, "Category deleted", Toast.LENGTH_SHORT).show()
             }
             showDeleteDialog = false
             categoryToDelete = null
-            Toast.makeText(context, "Category deleted", Toast.LENGTH_SHORT).show()
         },
         onDeleteDismiss = {
             showDeleteDialog = false
