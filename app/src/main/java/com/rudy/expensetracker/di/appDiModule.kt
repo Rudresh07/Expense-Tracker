@@ -7,7 +7,6 @@ import com.rudy.expensetracker.notifications.NotificationHelper
 import com.rudy.expensetracker.repository.CategoryRepository
 import com.rudy.expensetracker.repository.MerchantLearningRepository
 import com.rudy.expensetracker.repository.TransactionRepository
-import com.rudy.expensetracker.utils.AuthManager
 import com.rudy.expensetracker.utils.PreferenceManager
 import com.rudy.expensetracker.viewmodel.CategoryViewModel
 import com.rudy.expensetracker.viewmodel.TransactionViewmodel
@@ -39,7 +38,6 @@ val appDiModule = module {
     factory { MerchantLearningRepository(get()) }
 
     single { PreferenceManager(androidContext()) }
-    single { AuthManager(get(), get(), get()) }
 
     viewModel { TransactionViewmodel(get(), get()) }
     viewModel { CategoryViewModel(get()) }

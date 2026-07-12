@@ -10,7 +10,6 @@ import androidx.navigation.navArgument
 import com.rudy.expensetracker.notifications.NotificationHelper
 import com.rudy.expensetracker.ui.screens.AddExpenseScreen
 import com.rudy.expensetracker.ui.screens.AllTransactionsScreen
-import com.rudy.expensetracker.ui.screens.AuthScreen
 import com.rudy.expensetracker.ui.screens.DashboardScreen
 import com.rudy.expensetracker.ui.screens.ExpenseStatisticsScreen
 import com.rudy.expensetracker.ui.screens.PendingReviewScreen
@@ -30,26 +29,12 @@ fun ExpenseNavGraph(
     ) {
         composable("splash") {
             SplashScreen(
-                onNavigateToAuth = {
-                    navController.navigate("auth") {
-                        popUpTo("splash") { inclusive = true }
-                    }
-                },
                 onNavigateToHome = {
                     navController.navigate("dashboard") {
                         popUpTo("splash") { inclusive = true }
                     }
                     if (deepLinkRoute != null) {
                         navController.navigate(deepLinkRoute)
-                    }
-                }
-            )
-        }
-        composable("auth") {
-            AuthScreen(
-                onLoginSuccess = {
-                    navController.navigate("dashboard") {
-                        popUpTo("auth") { inclusive = true }
                     }
                 }
             )

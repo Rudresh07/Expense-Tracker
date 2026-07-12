@@ -62,23 +62,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.content.res.Configuration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import com.rudy.expensetracker.analytics.FirebaseAnalytics
-import com.rudy.expensetracker.database.CategoryDao
-import com.rudy.expensetracker.database.ExpenseDao
-import com.rudy.expensetracker.model.CategoryEntity
-import com.rudy.expensetracker.model.Transaction
 import com.rudy.expensetracker.model.TransactionWithCategory
 import com.rudy.expensetracker.ui.screens.LandscapeLayout
 import com.rudy.expensetracker.ui.theme.Orange
-import com.rudy.expensetracker.utils.AuthManager
 import com.rudy.expensetracker.utils.IconManager
 import com.rudy.expensetracker.utils.PreferenceManager
 import com.rudy.expensetracker.utils.toColor
 import com.rudy.expensetracker.viewmodel.TransactionViewmodel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.getKoin
 import java.time.LocalDate
@@ -114,7 +106,6 @@ fun DashboardScreen(
     var showFilterDropdown by rememberSaveable { mutableStateOf(false) }
 
     val viewModel: TransactionViewmodel = koinViewModel()
-    val authManager: AuthManager = getKoin().get()
     val firebaseEvents: FirebaseAnalytics = getKoin().get()
 
     val preferenceManager: PreferenceManager = getKoin().get()
@@ -187,7 +178,6 @@ fun DashboardScreen(
             iconColor = iconColor,
             isDarkMode = isDarkMode,
             isFoldable = isFoldable,
-            authManager = authManager,
             totalBalance = totalBalance,
             todayExpense = todayExpense,
             totalIncome = totalIncome,
@@ -220,7 +210,6 @@ fun DashboardScreen(
             textSecondaryColor = textSecondaryColor,
             iconColor = iconColor,
             isDarkMode = isDarkMode,
-            authManager = authManager,
             totalBalance = totalBalance,
             totalIncome = totalIncome,
             todayExpense = todayExpense,
@@ -303,7 +292,6 @@ fun DashboardScreen(
     iconColor: Color,
     isDarkMode: Boolean,
     isFoldable: Boolean,
-    authManager: AuthManager,
     totalBalance: Double,
     totalIncome: Double,
     todayExpense: Double,
@@ -337,9 +325,7 @@ fun DashboardScreen(
         ) {
             // Header
             HeaderSection(
-                authManager = authManager,
                 textPrimaryColor = textPrimaryColor,
-                textSecondaryColor = textSecondaryColor,
                 iconColor = iconColor,
                 pendingReviewCount = pendingReviewCount,
                 onReviewClick = onReviewClick,
@@ -469,7 +455,6 @@ fun DashboardScreen(
     textSecondaryColor: Color,
     iconColor: Color,
     isDarkMode: Boolean,
-    authManager: AuthManager,
     totalBalance: Double,
     totalIncome: Double,
     todayExpense: Double,
@@ -497,9 +482,7 @@ fun DashboardScreen(
     ) {
         // Header
         HeaderSection(
-            authManager = authManager,
             textPrimaryColor = textPrimaryColor,
-            textSecondaryColor = textSecondaryColor,
             iconColor = iconColor,
             pendingReviewCount = pendingReviewCount,
             onReviewClick = onReviewClick,
@@ -587,9 +570,7 @@ fun DashboardScreen(
 
 @Composable
 private fun HeaderSection(
-    authManager: AuthManager,
     textPrimaryColor: Color,
-    textSecondaryColor: Color,
     iconColor: Color,
     pendingReviewCount: Int,
     onReviewClick: () -> Unit,
@@ -600,15 +581,12 @@ private fun HeaderSection(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
-            Text(text = "Welcome!", fontSize = 14.sp, color = textSecondaryColor)
-            Text(
-                text = authManager.getUserName(),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = textPrimaryColor,
-            )
-        }
+        Text(
+            text = "Welcome!",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = textPrimaryColor,
+        )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box {
                 IconButton(onClick = onReviewClick) {
@@ -1169,48 +1147,11 @@ private fun BudgetSettingDialog(
 
 // ── Preview helpers ───────────────────────────────────────────────────────────
 
-private object PreviewExpenseDao : ExpenseDao {
-    override suspend fun insertExpense(expense: Transaction): Long = 0L
-    override suspend fun updateExpense(expense: Transaction) {}
-    override suspend fun deleteExpense(expense: Transaction) {}
-    override fun getAllExpenses(): Flow<List<TransactionWithCategory>> = flowOf(emptyList())
-    override fun getExpenseById(expenseId: Int): Flow<TransactionWithCategory?> = flowOf(null)
-    override fun getTransactionsByMonthYear(month: String, year: String): Flow<List<TransactionWithCategory>> = flowOf(emptyList())
-    override fun getTotalBalance(): Flow<Double> = flowOf(0.0)
-    override fun getTodayExpense(currentDate: String): Flow<Double> = flowOf(0.0)
-    override fun getTotalIncome(): Flow<Double> = flowOf(0.0)
-    override fun getTotalExpense(): Flow<Double> = flowOf(0.0)
-    override suspend fun deleteAllTransactions() {}
-    override suspend fun updateCategoryAndClearReview(txnId: Int, categoryId: Int) {}
-    override suspend fun clearNeedsReview(txnId: Int) {}
-    override fun getPendingReviewCount(): Flow<Int> = flowOf(0)
-    override fun getPendingReviewTransactions(): Flow<List<TransactionWithCategory>> = flowOf(emptyList())
-    override suspend fun getStaleReviewTransactions(cutoffDate: String): List<TransactionWithCategory> = emptyList()
-}
-
-private object PreviewCategoryDao : CategoryDao {
-    override suspend fun getAllCategories(): List<CategoryEntity> = emptyList()
-    override suspend fun insertCategory(category: CategoryEntity) {}
-    override suspend fun deleteCategory(category: CategoryEntity) {}
-    override suspend fun deleteCategoryById(categoryId: Int) {}
-    override suspend fun getCategoryByName(name: String): CategoryEntity? = null
-    override suspend fun deleteAllCategories() {}
-}
-
-@Composable
-private fun previewAuthManager(name: String): AuthManager {
-    val context = LocalContext.current
-    val prefs = PreferenceManager(context).apply { setUserName(name) }
-    return AuthManager(prefs, PreviewExpenseDao, PreviewCategoryDao)
-}
-
 @Preview(name = "Header / light / no badge", showBackground = true, backgroundColor = 0xFFF5F5F5)
 @Composable
 private fun HeaderSectionNoBadgePreview() {
     HeaderSection(
-        authManager = previewAuthManager("Rudresh Patel"),
         textPrimaryColor = Color.Black,
-        textSecondaryColor = Color.Gray,
         iconColor = Color.Gray,
         pendingReviewCount = 0,
         onReviewClick = {},
@@ -1222,9 +1163,7 @@ private fun HeaderSectionNoBadgePreview() {
 @Composable
 private fun HeaderSectionBadgePreview() {
     HeaderSection(
-        authManager = previewAuthManager("Rudresh Patel"),
         textPrimaryColor = Color.Black,
-        textSecondaryColor = Color.Gray,
         iconColor = Color.Gray,
         pendingReviewCount = 5,
         onReviewClick = {},
@@ -1237,9 +1176,7 @@ private fun HeaderSectionBadgePreview() {
 @Composable
 private fun HeaderSectionDarkOverflowPreview() {
     HeaderSection(
-        authManager = previewAuthManager("Rudresh Patel"),
         textPrimaryColor = Color.White,
-        textSecondaryColor = Color(0xFFB0B0B0),
         iconColor = Color(0xFFE0E0E0),
         pendingReviewCount = 12,
         onReviewClick = {},
