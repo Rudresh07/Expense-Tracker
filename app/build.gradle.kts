@@ -73,7 +73,6 @@ dependencies {
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.firebase.messaging)
     implementation(libs.ui.test.junit4)
-    implementation(libs.firebase.auth)
     implementation(libs.androidx.compose.foundation)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

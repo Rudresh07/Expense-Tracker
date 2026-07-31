@@ -37,18 +37,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rudy.expensetracker.ui.theme.Orange
-import com.rudy.expensetracker.utils.AuthManager
 import kotlinx.coroutines.delay
-import org.koin.compose.getKoin
 
 @Composable
 fun SplashScreen(
-    onNavigateToAuth: () -> Unit,
     onNavigateToHome: () -> Unit
 ) {
-    val authManager: AuthManager = getKoin().get()
-
-
     // Track visibility stages
     var showIcon by remember { mutableStateOf(false) }
     var showTitle by remember { mutableStateOf(false) }
@@ -66,12 +60,7 @@ fun SplashScreen(
 
         // Wait a bit before navigating
         delay(1000)
-        //if (authManager.isUserLoggedIn())
-       onNavigateToHome()
-
-       /* else{
-            onNavigateToAuth()
-        }*/
+        onNavigateToHome()
     }
 
     Box(

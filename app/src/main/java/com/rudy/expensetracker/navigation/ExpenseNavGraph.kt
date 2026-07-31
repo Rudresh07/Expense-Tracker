@@ -10,10 +10,10 @@ import androidx.navigation.navArgument
 import com.rudy.expensetracker.notifications.NotificationHelper
 import com.rudy.expensetracker.ui.screens.AddExpenseScreen
 import com.rudy.expensetracker.ui.screens.AllTransactionsScreen
-import com.rudy.expensetracker.ui.screens.AuthScreen
 import com.rudy.expensetracker.ui.screens.DashboardScreen
 import com.rudy.expensetracker.ui.screens.ExpenseStatisticsScreen
 import com.rudy.expensetracker.ui.screens.PendingReviewScreen
+import com.rudy.expensetracker.ui.screens.SettingsScreen
 import com.rudy.expensetracker.ui.screens.SplashScreen
 import org.koin.compose.getKoin
 
@@ -29,11 +29,6 @@ fun ExpenseNavGraph(
     ) {
         composable("splash") {
             SplashScreen(
-                onNavigateToAuth = {
-                    navController.navigate("auth") {
-                        popUpTo("splash") { inclusive = true }
-                    }
-                },
                 onNavigateToHome = {
                     navController.navigate("dashboard") {
                         popUpTo("splash") { inclusive = true }
@@ -44,21 +39,19 @@ fun ExpenseNavGraph(
                 }
             )
         }
-        composable("auth") {
-            AuthScreen(
-                onLoginSuccess = {
-                    navController.navigate("dashboard") {
-                        popUpTo("auth") { inclusive = true }
-                    }
-                }
-            )
-        }
         composable("dashboard") {
             DashboardScreen(
                 onAddExpenseClick = { navController.navigate("add_expense") },
                 onStatisticsClick = { navController.navigate("statistics") },
                 onViewAllTransactions = { navController.navigate("all_transactions") },
                 onReviewClick = { navController.navigate("pending_review") },
+                onSettingsClick = { navController.navigate("settings") },
+            )
+        }
+
+        composable("settings") {
+            SettingsScreen(
+                onBackClick = { navController.popBackStack() },
             )
         }
         composable("add_expense") {
