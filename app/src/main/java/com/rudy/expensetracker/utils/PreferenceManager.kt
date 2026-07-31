@@ -16,4 +16,7 @@ class PreferenceManager(context: Context) {
     fun setBatteryOptimizationPromptShown() { mPrefs.edit { putBoolean("battery_opt_prompt_shown", true) } }
     fun isBatteryOptimizationPromptShown(): Boolean = mPrefs.getBoolean("battery_opt_prompt_shown", false)
 
+    fun setWidgetNudgeShown() { mPrefs.edit { putBoolean("widget_nudge_shown", true) } }
+    fun isWidgetNudgeShown(): Boolean = mPrefs.getBoolean("widget_nudge_shown", false)
+
 }

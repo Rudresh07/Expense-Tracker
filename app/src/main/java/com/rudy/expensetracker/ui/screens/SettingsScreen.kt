@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.PrivacyTip
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rudy.expensetracker.ui.theme.Orange
 import com.rudy.expensetracker.utils.AppLinks
+import com.rudy.expensetracker.utils.requestPinWidget
 
 @Composable
 fun SettingsScreen(
@@ -75,6 +77,48 @@ fun SettingsScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    requestPinWidget(context)
+                },
+            colors = CardDefaults.cardColors(containerColor = surfaceColor),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Widgets,
+                        contentDescription = null,
+                        tint = Orange,
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Add Home Screen Widget",
+                            fontSize = 16.sp,
+                            color = textPrimary,
+                        )
+                        Text(
+                            text = "See your balance at a glance",
+                            fontSize = 12.sp,
+                            color = textSecondary,
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         Card(
             modifier = Modifier

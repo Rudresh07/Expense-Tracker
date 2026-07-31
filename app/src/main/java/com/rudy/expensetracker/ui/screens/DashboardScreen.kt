@@ -58,6 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -69,6 +70,7 @@ import com.rudy.expensetracker.ui.screens.LandscapeLayout
 import com.rudy.expensetracker.ui.theme.Orange
 import com.rudy.expensetracker.utils.IconManager
 import com.rudy.expensetracker.utils.PreferenceManager
+import com.rudy.expensetracker.utils.requestPinWidget
 import com.rudy.expensetracker.utils.toColor
 import com.rudy.expensetracker.viewmodel.TransactionViewmodel
 import org.koin.androidx.compose.koinViewModel
@@ -112,6 +114,8 @@ fun DashboardScreen(
     var monthlyBudget by rememberSaveable { mutableStateOf(preferenceManager.getMonthlyBudget()) }
 
     var showBudgetDialog by rememberSaveable { mutableStateOf(false) }
+    var showWidgetNudge by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
 
     val totalBalance by viewModel.totalBalance.collectAsState()
     val totalIncome by viewModel.totalIncome.collectAsState()
@@ -121,6 +125,13 @@ fun DashboardScreen(
 
     LaunchedEffect(pendingReviewCount) {
         viewModel.triggerPendingReviewSheetIfNeeded(pendingReviewCount)
+    }
+
+    LaunchedEffect(transactions) {
+        if (transactions.isNotEmpty() && !preferenceManager.isWidgetNudgeShown()) {
+            preferenceManager.setWidgetNudgeShown()
+            showWidgetNudge = true
+        }
     }
 
     val filterOptions = listOf("1 day", "7 days")
@@ -277,6 +288,40 @@ fun DashboardScreen(
             dismissButton = {
                 TextButton(onClick = { viewModel.onPendingReviewSheetShown() }) {
                     Text("Later", color = if (isDarkMode) Color(0xFFB0B0B0) else Color.Gray)
+                }
+            }
+        )
+    }
+
+    if (showWidgetNudge) {
+        AlertDialog(
+            onDismissRequest = { showWidgetNudge = false },
+            containerColor = if (isDarkMode) Color(0xFF1E1E1E) else Color.White,
+            title = {
+                Text(
+                    text = "See your balance at a glance",
+                    color = if (isDarkMode) Color.White else Color.Black,
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                Text(
+                    text = "Add the ExpenseTracker widget to your home screen to check your balance without opening the app.",
+                    color = if (isDarkMode) Color(0xFFB0B0B0) else Color.Gray,
+                    fontSize = 14.sp,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showWidgetNudge = false
+                    requestPinWidget(context)
+                }) {
+                    Text("Add Widget", color = Orange)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showWidgetNudge = false }) {
+                    Text("Maybe Later", color = if (isDarkMode) Color(0xFFB0B0B0) else Color.Gray)
                 }
             }
         )
