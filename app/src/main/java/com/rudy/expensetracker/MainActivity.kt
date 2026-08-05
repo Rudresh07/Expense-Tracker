@@ -13,10 +13,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -26,6 +30,7 @@ import com.rudy.expensetracker.navigation.ExpenseNavGraph
 import com.rudy.expensetracker.notifications.NotificationHelper
 import com.rudy.expensetracker.sms.AutoConfirmWorker
 import com.rudy.expensetracker.sms.PastSmsScanWorker
+import com.rudy.expensetracker.ui.screens.SmsPermissionRationaleDialog
 import com.rudy.expensetracker.ui.theme.ExpenseTrackerTheme
 import com.rudy.expensetracker.utils.PreferenceManager
 import com.rudy.expensetracker.widget.EXTRA_NAVIGATE_TO
@@ -35,6 +40,8 @@ class MainActivity : ComponentActivity() {
 
     private val preferenceManager: PreferenceManager by inject()
     private val notificationHelper: NotificationHelper by inject()
+
+    private var showSmsRationaleDialog by mutableStateOf(false)
 
     // Request RECEIVE_SMS + READ_SMS together
     private val smsPermissionLauncher = registerForActivityResult(
@@ -75,7 +82,7 @@ class MainActivity : ComponentActivity() {
         Log.d(TAG, "onCreate — READ_SMS=$readGranted, RECEIVE_SMS=$receiveGranted, scanDone=${preferenceManager.isInitialSmsScanDone()}")
 
         if (!readGranted || !receiveGranted) {
-            showSmsPermissionRationale()
+            showSmsRationaleDialog = true
         } else {
             // Permissions already granted (returning user) — run scan if not done yet
             enqueuePastSmsScanIfNeeded()
@@ -95,37 +102,31 @@ class MainActivity : ComponentActivity() {
         setContent {
             ExpenseTrackerTheme {
                 Surface(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .safeDrawingPadding(),
+                    modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ExpenseNavGraph(deepLinkRoute = deepLinkRoute)
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        ExpenseNavGraph(deepLinkRoute = deepLinkRoute)
+                    }
+
+                    if (showSmsRationaleDialog) {
+                        SmsPermissionRationaleDialog(
+                            onAllow = {
+                                showSmsRationaleDialog = false
+                                Log.d(TAG, "Launching permission request")
+                                smsPermissionLauncher.launch(
+                                    arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS)
+                                )
+                            },
+                            onDismiss = {
+                                showSmsRationaleDialog = false
+                                Log.w(TAG, "User declined SMS permission rationale")
+                            }
+                        )
+                    }
                 }
             }
         }
-    }
-
-    private fun showSmsPermissionRationale() {
-        AlertDialog.Builder(this)
-            .setTitle("Automatic transaction detection")
-            .setMessage(
-                "ExpenseTracker can read incoming SMS messages to automatically detect bank " +
-                "and UPI transactions and add them to your expense log, so you don't have to " +
-                "enter every transaction by hand. This requires SMS permissions.\n\n" +
-                "If you don't grant this, you can still add and track expenses manually."
-            )
-            .setPositiveButton("Continue") { _, _ ->
-                Log.d(TAG, "Launching permission request")
-                smsPermissionLauncher.launch(
-                    arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS)
-                )
-            }
-            .setNegativeButton("Not Now") { _, _ ->
-                Log.w(TAG, "User declined SMS permission rationale")
-            }
-            .setCancelable(false)
-            .show()
     }
 
     private fun enqueuePastSmsScanIfNeeded() {
